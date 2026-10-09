@@ -81,7 +81,7 @@ export default function InstagramDownloaderPage() {
         <div>
           <div className="flex items-center gap-2 text-pink-400 text-xs font-semibold uppercase tracking-wider mb-1">
             <Instagram className="w-4 h-4" />
-            MediaHub Pro Suite
+            Downloads & Limpeza
           </div>
           <h1 className="text-2xl font-extrabold text-white">Baixar Perfil (Instagram)</h1>
           <p className="text-xs text-gray-400 mt-1">

@@ -13,8 +13,7 @@ import {
   Film,
   Instagram,
   ShieldCheck,
-  DownloadCloud,
-  Sparkles
+  DownloadCloud
 } from 'lucide-react';
 
 const MAIN_MENU = [
@@ -23,10 +22,10 @@ const MAIN_MENU = [
   { name: 'Fila & Agendador', href: '/fila', icon: Layers },
 ];
 
-const MEDIAHUB_MENU = [
-  { name: 'Baixar TikTok', href: '/tiktok', icon: Film, badge: 'Sem Marca' },
-  { name: 'Baixar Instagram', href: '/instagram', icon: Instagram, badge: 'Reels/HD' },
-  { name: 'Limpar Metadados', href: '/metadados', icon: ShieldCheck, badge: 'Anti-Ban' },
+const DOWNLOADS_MENU = [
+  { name: 'Baixar TikTok', href: '/tiktok', icon: Film },
+  { name: 'Baixar Instagram', href: '/instagram', icon: Instagram },
+  { name: 'Limpar Metadados', href: '/metadados', icon: ShieldCheck },
 ];
 
 const MANAGEMENT_MENU = [
@@ -50,7 +49,7 @@ export function Sidebar() {
               <div className="font-bold text-base text-white tracking-tight flex items-center gap-1.5">
                 P&A <span className="text-[10px] bg-indigo-500/20 text-indigo-400 font-semibold px-1.5 py-0.2 rounded-full border border-indigo-500/30">PRO</span>
               </div>
-              <div className="text-[11px] text-gray-400 font-medium">Postador & MediaHub</div>
+              <div className="text-[11px] text-gray-400 font-medium">Postador & Downloads</div>
             </div>
           </Link>
         </div>
@@ -80,34 +79,27 @@ export function Sidebar() {
           })}
         </div>
 
-        {/* Section 2: MediaHub Pro Suite */}
+        {/* Section 2: Downloads & Limpeza */}
         <div className="p-3 space-y-1 border-t border-gray-800/80">
           <div className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-indigo-400 flex items-center gap-1.5">
             <DownloadCloud className="w-3.5 h-3.5" />
-            MediaHub Pro Suite
+            Downloads & Limpeza
           </div>
-          {MEDIAHUB_MENU.map((item) => {
+          {DOWNLOADS_MENU.map((item) => {
             const isActive = pathname === item.href;
             const Icon = item.icon;
             return (
               <Link
                 key={item.href}
                 href={item.href}
-                className={`flex items-center justify-between px-3 py-2 rounded-xl font-medium text-xs transition-all duration-150 ${
+                className={`flex items-center gap-3 px-3 py-2 rounded-xl font-medium text-xs transition-all duration-150 ${
                   isActive
                     ? 'bg-indigo-600/20 text-indigo-400 border border-indigo-500/30 font-semibold'
                     : 'text-gray-400 hover:text-gray-200 hover:bg-gray-900/60'
                 }`}
               >
-                <div className="flex items-center gap-3">
-                  <Icon className={`w-4 h-4 ${isActive ? 'text-indigo-400' : 'text-gray-400'}`} />
-                  {item.name}
-                </div>
-                {item.badge && (
-                  <span className="text-[9px] bg-indigo-500/15 text-indigo-300 font-semibold px-1.5 py-0.5 rounded border border-indigo-500/20">
-                    {item.badge}
-                  </span>
-                )}
+                <Icon className={`w-4 h-4 ${isActive ? 'text-indigo-400' : 'text-gray-400'}`} />
+                {item.name}
               </Link>
             );
           })}
