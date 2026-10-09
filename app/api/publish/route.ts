@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getAccounts, getPosts, savePosts } from '@/lib/storage';
+import { getAccountsAsync, getPostsAsync, savePostAsync } from '@/lib/storage';
 import { MetaAPIClient } from '@/lib/meta_api';
 import path from 'path';
 import fs from 'fs';
@@ -7,14 +7,14 @@ import fs from 'fs';
 export async function POST(req: Request) {
   try {
     const { postId, scheduleTimestamp } = await req.json();
-    const posts = getPosts();
+    const posts = await getPostsAsync();
     const post = posts.find((p) => p.id === postId);
 
     if (!post) {
       return NextResponse.json({ error: 'Post não encontrado.' }, { status: 404 });
     }
 
-    const accounts = getAccounts();
+    const accounts = await getAccountsAsync();
     const account = accounts.find((a) => a.id === post.account_id);
 
     if (!account) {
@@ -77,7 +77,7 @@ export async function POST(req: Request) {
       post.error_message = results.facebook_error || results.instagram_error || 'Falha ao publicar na API.';
     }
 
-    savePosts(posts);
+    await savePostAsync(post);
     return NextResponse.json({ success: hasSuccess, post, details: results });
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });

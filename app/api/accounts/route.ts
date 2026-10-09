@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server';
-import { getAccounts, saveAccounts } from '@/lib/storage';
+import { getAccountsAsync, saveAccountAsync, deleteAccountAsync } from '@/lib/storage';
 import { SocialAccount } from '@/lib/types';
 
 export async function GET() {
-  const accounts = getAccounts();
+  const accounts = await getAccountsAsync();
   return NextResponse.json(accounts);
 }
 
@@ -14,24 +14,18 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Nome do perfil é obrigatório.' }, { status: 400 });
     }
 
-    const accounts = getAccounts();
     const id = newAccount.id || newAccount.name.toLowerCase().replace(/[^a-z0-9]/g, '-');
-    
-    // Checar se já existe
-    const existingIndex = accounts.findIndex((a) => a.id === id);
-    if (existingIndex >= 0) {
-      accounts[existingIndex] = { ...accounts[existingIndex], ...newAccount };
-    } else {
-      accounts.push({
-        ...newAccount,
-        id,
-        created_at: new Date().toISOString(),
-        status: newAccount.status || 'active',
-      });
-    }
+    const accountToSave: SocialAccount = {
+      ...newAccount,
+      id,
+      created_at: newAccount.created_at || new Date().toISOString(),
+      status: newAccount.status || 'active',
+      post_to_facebook: newAccount.post_to_facebook ?? true,
+      post_to_instagram: newAccount.post_to_instagram ?? !!newAccount.instagram_account_id,
+    };
 
-    saveAccounts(accounts);
-    return NextResponse.json({ success: true, account: accounts.find((a) => a.id === id) });
+    await saveAccountAsync(accountToSave);
+    return NextResponse.json({ success: true, account: accountToSave });
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
@@ -45,10 +39,7 @@ export async function DELETE(req: Request) {
       return NextResponse.json({ error: 'ID do perfil é obrigatório.' }, { status: 400 });
     }
 
-    const accounts = getAccounts();
-    const filtered = accounts.filter((a) => a.id !== id);
-    saveAccounts(filtered);
-
+    await deleteAccountAsync(id);
     return NextResponse.json({ success: true });
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });

@@ -1,10 +1,10 @@
 import { NextResponse } from 'next/server';
-import { getAccounts, saveAccounts } from '@/lib/storage';
+import { getAccountsAsync, saveAccountAsync } from '@/lib/storage';
 
 export async function POST(req: Request) {
   try {
     const { accountId } = await req.json();
-    const accounts = getAccounts();
+    const accounts = await getAccountsAsync();
     const targetAccount = accounts.find((a) => a.id === accountId);
 
     if (!targetAccount) {
@@ -40,7 +40,7 @@ export async function POST(req: Request) {
       targetAccount.status = 'active';
     }
 
-    saveAccounts(accounts);
+    await saveAccountAsync(targetAccount);
     return NextResponse.json({ success: true, account: targetAccount });
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });

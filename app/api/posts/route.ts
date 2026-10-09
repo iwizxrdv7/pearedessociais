@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getPosts, savePosts, getAccounts } from '@/lib/storage';
+import { getPostsAsync, savePostAsync, deletePostAsync, getAccountsAsync } from '@/lib/storage';
 import { VideoPost } from '@/lib/types';
 
 export async function GET(req: Request) {
@@ -7,7 +7,7 @@ export async function GET(req: Request) {
   const accountId = searchParams.get('accountId');
   const status = searchParams.get('status');
 
-  let posts = getPosts();
+  let posts = await getPostsAsync();
   if (accountId) {
     posts = posts.filter((p) => p.account_id === accountId);
   }
@@ -25,9 +25,8 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Conta e Vídeo são obrigatórios.' }, { status: 400 });
     }
 
-    const accounts = getAccounts();
+    const accounts = await getAccountsAsync();
     const account = accounts.find((a) => a.id === postData.account_id);
-    const posts = getPosts();
 
     const newPost: VideoPost = {
       id: postData.id || `post_${Date.now()}_${Math.random().toString(36).substring(7)}`,
@@ -45,9 +44,7 @@ export async function POST(req: Request) {
       created_at: new Date().toISOString(),
     };
 
-    posts.unshift(newPost);
-    savePosts(posts);
-
+    await savePostAsync(newPost);
     return NextResponse.json({ success: true, post: newPost });
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });
@@ -62,10 +59,7 @@ export async function DELETE(req: Request) {
       return NextResponse.json({ error: 'ID do post é obrigatório.' }, { status: 400 });
     }
 
-    const posts = getPosts();
-    const filtered = posts.filter((p) => p.id !== id);
-    savePosts(filtered);
-
+    await deletePostAsync(id);
     return NextResponse.json({ success: true });
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });
