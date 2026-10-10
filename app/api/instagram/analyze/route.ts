@@ -43,8 +43,10 @@ export async function POST(req: Request) {
           view_count: p.view_count || 0,
           save_count: p.save_count || 0,
           direct_media_url: p.play_url || p.cover || '',
-          type: p.type || (p.is_video ? 'reel' : 'post'),
+          type: p.type || (p.is_video ? 'reel' : 'photo'),
+          highlight_id: p.highlight_id,
           highlight_name: p.highlight_name,
+          story_index: p.story_index,
         }));
 
         return NextResponse.json({

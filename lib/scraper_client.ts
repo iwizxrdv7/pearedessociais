@@ -10,6 +10,7 @@ export interface ScrapedHighlight {
   title: string;
   cover: string;
   url: string;
+  story_count?: number;
 }
 
 export interface ScrapedPost {
@@ -25,7 +26,9 @@ export interface ScrapedPost {
   order_index?: number;
   direct_media_url?: string;
   type?: string;
+  highlight_id?: string;
   highlight_name?: string;
+  story_index?: number;
 }
 
 export interface ScrapedVideo {
@@ -80,19 +83,25 @@ export async function fetchInstagramProfile(query: string, maxItems: number = 0)
       const rawHighlights: ScrapedHighlight[] = data.data?.highlights || [];
 
       if (rawPosts.length > 0) {
-        const limitedPosts = maxItems > 0 ? rawPosts.slice(0, maxItems) : rawPosts;
+        const feedPosts = rawPosts.filter((p: any) => p.type !== 'highlight' && p.type !== 'avatar');
+        const highlightPosts = rawPosts.filter((p: any) => p.type === 'highlight');
+        const avatarPosts = rawPosts.filter((p: any) => p.type === 'avatar');
+
+        const limitedFeedPosts = maxItems > 0 ? feedPosts.slice(0, maxItems) : feedPosts;
+        const finalPosts = [...limitedFeedPosts, ...highlightPosts, ...avatarPosts];
+
         return {
           user_info: {
             username: rawUser.username || cleanQuery,
             nickname: rawUser.nickname || rawUser.username || cleanQuery,
-            avatar: rawUser.avatar || limitedPosts[0]?.cover || limitedPosts[0]?.thumbnail || '',
+            avatar: rawUser.avatar || finalPosts[0]?.cover || finalPosts[0]?.thumbnail || '',
             signature: rawUser.signature || 'Perfil do Instagram',
             follower_count: Number(rawUser.followers_count) || 0,
             following_count: Number(rawUser.following_count) || 0,
-            video_count: limitedPosts.length,
+            video_count: limitedFeedPosts.length,
           },
           highlights: rawHighlights,
-          posts: limitedPosts.map((p: any, idx: number) => ({
+          posts: finalPosts.map((p: any, idx: number) => ({
             id: p.id,
             url: p.play_url?.startsWith('http') && !p.play_url.includes('.mp4') && !p.play_url.includes('.jpg')
               ? p.play_url
@@ -107,7 +116,9 @@ export async function fetchInstagramProfile(query: string, maxItems: number = 0)
             order_index: p.order_index ?? idx + 1,
             direct_media_url: p.play_url || p.cover || '',
             type: p.type || (p.is_video ? 'reel' : 'photo'),
+            highlight_id: p.highlight_id,
             highlight_name: p.highlight_name,
+            story_index: p.story_index,
           })),
         };
       }
@@ -157,20 +168,25 @@ export async function fetchInstagramProfile(query: string, maxItems: number = 0)
     );
   }
 
-  const limitedPosts = maxItems > 0 ? posts.slice(0, maxItems) : posts;
+  const feedPosts = posts.filter((p: any) => p.type !== 'highlight' && p.type !== 'avatar');
+  const highlightPosts = posts.filter((p: any) => p.type === 'highlight');
+  const avatarPosts = posts.filter((p: any) => p.type === 'avatar');
+
+  const limitedFeedPosts = maxItems > 0 ? feedPosts.slice(0, maxItems) : feedPosts;
+  const finalPosts = [...limitedFeedPosts, ...highlightPosts, ...avatarPosts];
 
   return {
     user_info: {
       username: rawUser.username || cleanQuery,
       nickname: rawUser.nickname || rawUser.username || cleanQuery,
-      avatar: rawUser.avatar || limitedPosts[0]?.thumbnail || '',
+      avatar: rawUser.avatar || finalPosts[0]?.thumbnail || '',
       signature: rawUser.signature || 'Perfil Instagram',
       follower_count: Number(rawUser.follower_count || rawUser.followers_count) || 0,
       following_count: Number(rawUser.following_count) || 0,
-      video_count: limitedPosts.length,
+      video_count: limitedFeedPosts.length,
     },
     highlights: rawHighlights,
-    posts: limitedPosts.map((p: any, idx: number) => ({
+    posts: finalPosts.map((p: any, idx: number) => ({
       id: p.id,
       url: p.url || p.play_url || `https://www.instagram.com/p/${p.id}/`,
       thumbnail: p.thumbnail || p.cover || '',
@@ -183,7 +199,9 @@ export async function fetchInstagramProfile(query: string, maxItems: number = 0)
       order_index: p.order_index ?? idx + 1,
       direct_media_url: p.direct_media_url || p.play_url || '',
       type: p.type || 'reel',
+      highlight_id: p.highlight_id,
       highlight_name: p.highlight_name,
+      story_index: p.story_index,
     })),
   };
 }

@@ -38,7 +38,9 @@ interface InstagramPost {
   order_index?: number;
   direct_media_url?: string;
   type?: string;
+  highlight_id?: string;
   highlight_name?: string;
+  story_index?: number;
 }
 
 interface ProfileInfo {
@@ -97,14 +99,13 @@ export default function InstagramDownloaderPage() {
       }
 
       const fetchedPosts: InstagramPost[] = (data.posts || []) as any;
-      const finalPosts = Number(maxPosts) > 0 ? fetchedPosts.slice(0, Number(maxPosts)) : fetchedPosts;
-      if (finalPosts.length === 0) {
+      if (fetchedPosts.length === 0) {
         throw new Error('Nenhuma publicação encontrada para este perfil.');
       }
 
-      setPosts(finalPosts);
-      setSelectedIds(new Set(finalPosts.map((p) => p.id)));
-      setSuccessMsg(`Encontradas ${finalPosts.length} mídias públicas de alta qualidade!`);
+      setPosts(fetchedPosts);
+      setSelectedIds(new Set(fetchedPosts.map((p) => p.id)));
+      setSuccessMsg(`Encontradas ${fetchedPosts.length} mídias públicas (incluindo Stories dos Destaques) de alta qualidade!`);
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -146,7 +147,13 @@ export default function InstagramDownloaderPage() {
       }
       if (activeTab.startsWith('highlight_')) {
         const hlId = activeTab.replace('highlight_', '');
-        return p.id.includes(hlId) || p.highlight_name === activeTab;
+        const targetHl = highlights.find((h) => h.id === activeTab || h.highlight_id === hlId);
+        return (
+          p.type === 'highlight' &&
+          (p.highlight_id === hlId ||
+            p.id.includes(hlId) ||
+            (targetHl && p.highlight_name === targetHl.title))
+        );
       }
       return true;
     });
@@ -491,9 +498,20 @@ export default function InstagramDownloaderPage() {
                   </span>
                 </button>
 
-                {/* 4. Destaques dinâmicos com Capa Fixada */}
+                {/* 4. Destaques dinâmicos com Capa Fixada e Contador de Stories */}
                 {highlights.map((hl) => {
                   const isActive = activeTab === hl.id || activeTab === `highlight_${hl.highlight_id}`;
+                  const hlStoriesCount =
+                    posts.filter(
+                      (p) =>
+                        p.type === 'highlight' &&
+                        (p.highlight_id === hl.highlight_id ||
+                          p.id.includes(hl.highlight_id || '') ||
+                          p.highlight_name === hl.title)
+                    ).length ||
+                    hl.story_count ||
+                    1;
+
                   return (
                     <button
                       key={hl.id}
@@ -507,9 +525,16 @@ export default function InstagramDownloaderPage() {
                       <img
                         src={hl.cover || profile?.avatar || 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=80&h=80&fit=crop'}
                         alt={hl.title}
-                        className="w-5 h-5 rounded-full object-cover ring-1 ring-pink-400/80"
+                        className="w-5 h-5 rounded-full object-cover ring-1 ring-pink-400/80 flex-shrink-0"
                       />
                       <span>Destaque: {hl.title}</span>
+                      <span
+                        className={`text-[10px] px-1.5 py-0.5 rounded-full ${
+                          isActive ? 'bg-pink-800 text-white' : 'bg-gray-800 text-gray-400'
+                        }`}
+                      >
+                        {hlStoriesCount}
+                      </span>
                     </button>
                   );
                 })}
