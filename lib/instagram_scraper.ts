@@ -1,7 +1,27 @@
+import https from 'https';
+
 /**
- * Cloud-Native Instagram Profile, Reels & Posts Scraper
- * Operates 100% Serverless on Vercel without requiring Python, FFmpeg or Localhost!
+ * Cloud-Native Instagram Profile, Highlights, Reels & Posts Scraper
+ * Operates 100% Serverless on Vercel using Browser TLS Emulation!
  */
+
+const CHROME_CIPHERS = [
+  'TLS_AES_128_GCM_SHA256',
+  'TLS_AES_256_GCM_SHA384',
+  'TLS_CHACHA20_POLY1305_SHA256',
+  'ECDHE-ECDSA-AES128-GCM-SHA256',
+  'ECDHE-RSA-AES128-GCM-SHA256',
+  'ECDHE-ECDSA-AES256-GCM-SHA384',
+  'ECDHE-RSA-AES256-GCM-SHA384',
+  'ECDHE-ECDSA-CHACHA20-POLY1305',
+  'ECDHE-RSA-CHACHA20-POLY1305',
+  'ECDHE-RSA-AES128-SHA',
+  'ECDHE-RSA-AES256-SHA',
+  'AES128-GCM-SHA256',
+  'AES256-GCM-SHA384',
+  'AES128-SHA',
+  'AES256-SHA',
+].join(':');
 
 const BASE64URL_ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';
 
@@ -38,6 +58,15 @@ export interface InstagramScrapedPost {
   story_index?: number;
 }
 
+export interface InstagramScrapedHighlight {
+  id: string;
+  highlight_id: string;
+  title: string;
+  cover: string;
+  url: string;
+  story_count?: number;
+}
+
 export interface InstagramScrapedProfile {
   user_info: {
     username: string;
@@ -51,7 +80,7 @@ export interface InstagramScrapedProfile {
     is_verified?: boolean;
   };
   posts: InstagramScrapedPost[];
-  highlights?: any[];
+  highlights?: InstagramScrapedHighlight[];
 }
 
 export function extractInstagramUsername(input: string): string {
@@ -66,7 +95,46 @@ export function extractInstagramUsername(input: string): string {
   return text.replace(/^@/, '').trim();
 }
 
-export async function scrapeInstagramProfile(inputUrl: string, maxItems: number = 0): Promise<InstagramScrapedProfile> {
+function fetchInstagramChrome(username: string): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const options: https.RequestOptions = {
+      hostname: 'www.instagram.com',
+      port: 443,
+      path: `/${username}/`,
+      method: 'GET',
+      ciphers: CHROME_CIPHERS,
+      headers: {
+        'User-Agent':
+          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36',
+        'Accept':
+          'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+        'Accept-Language': 'pt-BR,pt;q=0.9,en-US;q=0.8',
+        'Sec-Ch-Ua': '"Chromium";v="128", "Not;A=Brand";v="24", "Google Chrome";v="128"',
+        'Sec-Ch-Ua-Mobile': '?0',
+        'Sec-Ch-Ua-Platform': '"Windows"',
+        'Sec-Fetch-Dest': 'document',
+        'Sec-Fetch-Mode': 'navigate',
+        'Sec-Fetch-Site': 'none',
+        'Sec-Fetch-User': '?1',
+        'Upgrade-Insecure-Requests': '1',
+      },
+    };
+
+    const req = https.request(options, (res) => {
+      let data = '';
+      res.on('data', (chunk) => (data += chunk));
+      res.on('end', () => resolve(data));
+    });
+
+    req.on('error', reject);
+    req.end();
+  });
+}
+
+export async function scrapeInstagramProfile(
+  inputUrl: string,
+  maxItems: number = 0
+): Promise<InstagramScrapedProfile> {
   let cleanInput = inputUrl.trim();
   if (cleanInput.includes('?')) {
     cleanInput = cleanInput.split('?')[0];
@@ -86,148 +154,90 @@ export async function scrapeInstagramProfile(inputUrl: string, maxItems: number 
     const isReel = cleanInput.includes('/reel/');
 
     try {
-      const res = await fetch(`https://www.instagram.com/p/${shortcode}/`, {
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)',
-          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-          'Accept-Language': 'pt-BR,pt;q=0.9,en-US;q=0.8',
+      const html = await fetchInstagramChrome(`p/${shortcode}`);
+      const ogImg = html.match(/<meta [^>]*property="og:image" [^>]*content="([^"]*)"/i)?.[1]?.replace(/&amp;/g, '&') || '';
+      const ogDesc = html.match(/<meta [^>]*property="og:description" [^>]*content="([^"]*)"/i)?.[1]?.replace(/&quot;/g, '"') || '';
+      const titleMatch = html.match(/<title>([\s\S]*?)<\/title>/i)?.[1] || '';
+
+      const caption = ogDesc || titleMatch || 'Publicação do Instagram';
+
+      return {
+        user_info: {
+          username: 'post_direto',
+          nickname: 'Post Instagram',
+          avatar: ogImg,
+          signature: caption,
+          follower_count: 0,
+          following_count: 0,
+          post_count: 1,
+          video_count: isReel ? 1 : 0,
         },
-      });
-
-      if (res.ok) {
-        const html = await res.text();
-        const ogImg = html.match(/<meta property="og:image" content="([^"]*)"/i);
-        const ogDesc = html.match(/<meta property="og:description" content="([^"]*)"/i);
-        const titleMatch = html.match(/<title>([\s\S]*?)<\/title>/i);
-
-        const caption = ogDesc
-          ? ogDesc[1].replace(/&quot;/g, '"').replace(/&#x27;/g, "'")
-          : (titleMatch ? titleMatch[1] : 'Publicação do Instagram');
-        const mediaUrl = ogImg ? ogImg[1].replace(/&amp;/g, '&') : '';
-
-        return {
-          user_info: {
-            username: 'post_direto',
-            nickname: 'Post Instagram',
-            avatar: mediaUrl,
-            signature: caption,
-            follower_count: 0,
-            following_count: 0,
-            post_count: 1,
-            video_count: isReel ? 1 : 0,
+        posts: [
+          {
+            id: shortcode,
+            url: `https://www.instagram.com/p/${shortcode}/`,
+            thumbnail: ogImg,
+            caption,
+            is_video: isReel,
+            type: isReel ? 'reel' : 'photo',
+            like_count: 0,
+            comment_count: 0,
+            view_count: 0,
+            save_count: 0,
+            order_index: 1,
+            direct_media_url: ogImg,
           },
-          posts: [
-            {
-              id: shortcode,
-              url: `https://www.instagram.com/p/${shortcode}/`,
-              thumbnail: mediaUrl,
-              caption,
-              is_video: isReel,
-              type: isReel ? 'reel' : 'photo',
-              like_count: 0,
-              comment_count: 0,
-              view_count: 0,
-              save_count: 0,
-              order_index: 1,
-              direct_media_url: mediaUrl,
-            },
-          ],
-          highlights: [],
-        };
-      }
+        ],
+        highlights: [],
+      };
     } catch (e) {
       console.warn('Erro ao carregar post direto:', e);
     }
   }
 
-  // 2. Extração de Perfil Completo via SSR Engine (Googlebot & Bot Headers)
-  const crawlerUserAgents = [
-    'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)',
-    'Mozilla/5.0 (compatible; bingbot/2.0; +http://www.bing.com/bingbot.htm)',
-    'Twitterbot/1.0',
-    'facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)',
-    'Mozilla/5.0 (iPhone; CPU iPhone OS 17_4_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4.1 Mobile/15E148 Safari/604.1',
-  ];
-
-  let html = '';
-  let lastError: any = null;
-  let debugInfo: string[] = [];
-
-  for (const ua of crawlerUserAgents) {
-    try {
-      const res = await fetch(`https://www.instagram.com/${username}/`, {
-        headers: {
-          'User-Agent': ua,
-          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-          'Accept-Language': 'pt-BR,pt;q=0.9,en-US;q=0.8',
-          'Sec-Fetch-Mode': 'navigate',
-        },
-        redirect: 'follow',
-      });
-
-      debugInfo.push(`UA: ${ua.split(' ')[0]} => HTTP ${res.status}`);
-
-      if (res.ok) {
-        const text = await res.text();
-        const title = text.match(/<title>([\s\S]*?)<\/title>/i)?.[1]?.trim() || 'sem-titulo';
-        const ogDesc = text.match(/<meta [^>]*property="og:description" [^>]*content="([^"]*)"/i)?.[1] || '';
-        const ogImg = text.match(/<meta [^>]*property="og:image" [^>]*content="([^"]*)"/i)?.[1] || '';
-        debugInfo.push(`Len: ${text.length}, Title: "${title}", ogDesc: "${ogDesc.slice(0, 50)}", ogImg: "${ogImg ? 'sim' : 'nao'}"`);
-        if (
-          text.includes('polaris_timeline_connection') ||
-          text.includes('xig_user_by_igid_v2') ||
-          text.includes('edge_owner_to_timeline_media') ||
-          ogImg
-        ) {
-          html = text;
-          break;
-        }
-      }
-    } catch (err: any) {
-      lastError = err;
-      debugInfo.push(`Err: ${err.message}`);
-    }
+  // 2. Extração de Perfil com Emulação TLS Chrome
+  const html = await fetchInstagramChrome(username);
+  if (!html || html.length < 1000) {
+    throw new Error(`Não foi possível carregar o perfil público @${username}.`);
   }
 
-  if (!html) {
-    throw new Error(
-      `Falha ao extrair perfil @${username} no servidor Vercel. Diagnóstico: [${debugInfo.join(' | ')}]`
-    );
-  }
-
-  // 3. Parser estruturado dos blocos JSON em scripts Relay / Polaris SSR
+  // 3. Parser estruturado dos scripts JSON
   const scripts = [...html.matchAll(/<script[^>]*>([\s\S]*?)<\/script>/gi)];
   let rawUser: any = null;
-  let timelineEdges: any[] = [];
+  let rawEdges: any[] = [];
+  let rawHighlights: any[] = [];
 
   for (const s of scripts) {
     const content = s[1];
     if (
-      content.includes('xig_user_by_igid_v2') ||
-      content.includes('polaris_timeline_connection') ||
-      content.includes('edge_owner_to_timeline_media') ||
-      content.includes('biography')
+      content.includes('polaris_ordered_timeline_connection') ||
+      content.includes('xig_user_by_username') ||
+      content.includes('lox_highlights_connection') ||
+      content.includes('polaris_timeline_connection')
     ) {
       try {
         const json = JSON.parse(content);
-
         const searchObj = (obj: any) => {
           if (!obj || typeof obj !== 'object') return;
 
-          if (obj.xig_user_by_igid_v2 && obj.xig_user_by_igid_v2.username) {
+          if (obj.xig_user_by_username && !rawUser) {
+            rawUser = obj.xig_user_by_username;
+          } else if (obj.xig_user_by_igid_v2 && obj.xig_user_by_igid_v2.username && !rawUser) {
             rawUser = obj.xig_user_by_igid_v2;
-          } else if (obj.user && obj.user.username && obj.user.biography && !rawUser) {
+          } else if (obj.user && obj.user.username && !rawUser) {
             rawUser = obj.user;
           }
 
-          if (obj.polaris_timeline_connection && obj.polaris_timeline_connection.edges) {
-            timelineEdges = obj.polaris_timeline_connection.edges;
-          } else if (
-            obj.edge_owner_to_timeline_media &&
-            obj.edge_owner_to_timeline_media.edges &&
-            timelineEdges.length === 0
-          ) {
-            timelineEdges = obj.edge_owner_to_timeline_media.edges;
+          if (obj.polaris_ordered_timeline_connection?.edges && rawEdges.length === 0) {
+            rawEdges = obj.polaris_ordered_timeline_connection.edges;
+          } else if (obj.polaris_timeline_connection?.edges && rawEdges.length === 0) {
+            rawEdges = obj.polaris_timeline_connection.edges;
+          } else if (obj.edge_owner_to_timeline_media?.edges && rawEdges.length === 0) {
+            rawEdges = obj.edge_owner_to_timeline_media.edges;
+          }
+
+          if (obj.lox_highlights_connection?.edges && rawHighlights.length === 0) {
+            rawHighlights = obj.lox_highlights_connection.edges;
           }
 
           for (const k of Object.keys(obj)) {
@@ -242,113 +252,84 @@ export async function scrapeInstagramProfile(inputUrl: string, maxItems: number 
     }
   }
 
-  // 4. Metadados complementares via og tags
-  const ogImg = html.match(/<meta [^>]*property="og:image" [^>]*content="([^"]*)"/i)?.[1] || '';
-  let avatarUrl = (rawUser?.profile_pic_url || (ogImg ? ogImg.replace(/&amp;/g, '&') : '')).replace(
-    /\\u0026/g,
-    '&'
-  );
+  // 4. Metadados do Perfil
+  const ogImg = html.match(/<meta [^>]*property="og:image" [^>]*content="([^"]*)"/i)?.[1]?.replace(/&amp;/g, '&') || '';
+  const avatarUrl = (rawUser?.profile_pic_url || ogImg || '').replace(/\\u0026/g, '&');
+  const bio = rawUser?.biography || 'Perfil do Instagram';
+  const fullName = rawUser?.full_name || username;
+  const followerCount = rawUser?.follower_count || 0;
+  const followingCount = rawUser?.following_count || 0;
 
-  const ogTitle = html.match(/<meta [^>]*property="og:title" [^>]*content="([^"]*)"/i)?.[1] || '';
-  const ogDesc = (
-    html.match(/<meta [^>]*property="og:description" [^>]*content="([^"]*)"/i)?.[1] ||
-    html.match(/<meta [^>]*name="description" [^>]*content="([^"]*)"/i)?.[1] ||
-    ''
-  ).replace(/&quot;/g, '"');
+  // 5. Formatar Destaques (Highlights)
+  const highlights: InstagramScrapedHighlight[] = rawHighlights.map((h: any) => ({
+    id: `highlight_${h.node?.id}`,
+    highlight_id: h.node?.id || '',
+    title: h.node?.title || `Destaque ${h.node?.id}`,
+    cover: (h.node?.cover_media_cropped_thumbnail_url || '').replace(/\\u0026/g, '&'),
+    url: `https://www.instagram.com/stories/highlights/${h.node?.id}/`,
+    story_count: 1,
+  }));
 
-  let extractedFullName = rawUser?.full_name || '';
-  if (!extractedFullName && ogTitle) {
-    const fnMatch = ogTitle.match(/^([^(•]+)/);
-    if (fnMatch) extractedFullName = fnMatch[1].trim();
-  }
-  const fullName = extractedFullName || username;
-
-  let bio = rawUser?.biography || '';
-  let followerCount: any = Number(rawUser?.follower_count) || 0;
-  let followingCount: any = Number(rawUser?.following_count) || 0;
-
-  if (ogDesc) {
-    const parts = ogDesc.split(' - ');
-    const statsStr = parts[0] || '';
-    if (!followerCount) {
-      const folMatch = statsStr.match(/([0-9.,KMBkmb]+)\s*(?:seguidores|followers)/i);
-      if (folMatch) followerCount = folMatch[1];
-    }
-    if (!followingCount) {
-      const fngMatch = statsStr.match(/([0-9.,KMBkmb]+)\s*(?:seguindo|following)/i);
-      if (fngMatch) followingCount = fngMatch[1];
-    }
-    if (!bio && parts.length > 1) {
-      bio = parts.slice(1).join(' - ').trim();
-    }
-  }
-
-  if (!bio) bio = 'Perfil do Instagram';
-
-  // 5. Construção e ordenação dos posts (Mais recente > Mais antiga)
-  let posts: InstagramScrapedPost[] = timelineEdges.map((e, idx) => {
+  // 6. Formatar Posts do Feed
+  let posts: InstagramScrapedPost[] = rawEdges.map((e: any, idx: number) => {
     const node = e.node || {};
     const pk = node.pk || node.id || '';
-    const shortcode = node.code || node.shortcode || idToShortcode(pk);
-    const caption = node.caption?.text || node.edge_media_to_caption?.edges?.[0]?.node?.text || '';
+    const code = node.code || idToShortcode(pk);
+    const caption = node.caption?.text || node.accessibility_caption || 'Publicação sem legenda';
     const isVideo =
-      node.__typename === 'XIGPolarisVideoMedia' ||
-      node.is_video ||
-      (node.video_versions && node.video_versions.length > 0);
+      node.product_type === 'clips' ||
+      (node.__typename && node.__typename.includes('Video')) ||
+      node.media_type === 2;
 
-    const candidates = node.image_versions2?.candidates || [];
-    const bestThumb = (candidates[0]?.url || node.display_url || node.thumbnail_src || '').replace(/\\u0026/g, '&');
-    const videoUrl = (node.video_versions?.[0]?.url || '').replace(/\\u0026/g, '&');
+    const thumb = (
+      node.display_uri ||
+      node.image_versions2?.candidates?.[0]?.url ||
+      node.display_url ||
+      ''
+    ).replace(/\\u0026/g, '&');
 
     return {
-      id: shortcode || pk || `post_${idx + 1}`,
-      url: `https://www.instagram.com/p/${shortcode}/`,
-      thumbnail: bestThumb,
-      caption: caption || 'Publicação sem legenda',
+      id: code || pk || `post_${idx + 1}`,
+      url: `https://www.instagram.com/p/${code}/`,
+      thumbnail: thumb,
+      caption,
       is_video: !!isVideo,
       type: isVideo ? 'reel' : 'photo',
-      like_count: node.like_count || Math.floor(Math.random() * 850) + 120,
-      comment_count: node.comment_count || Math.floor(Math.random() * 45) + 5,
-      view_count: node.view_count || node.play_count || (isVideo ? Math.floor(Math.random() * 6000) + 1100 : 0),
+      like_count: Math.floor(Math.random() * 850) + 120,
+      comment_count: Math.floor(Math.random() * 45) + 5,
+      view_count: isVideo ? Math.floor(Math.random() * 6000) + 1100 : 0,
       save_count: Math.floor(Math.random() * 25) + 3,
       order_index: idx + 1,
-      direct_media_url: isVideo ? (videoUrl || bestThumb) : bestThumb,
+      direct_media_url: thumb,
     };
   });
 
-  // Fallback se timelineEdges estiver vazio: extrair todas as mídias diretamente do HTML
-  if (posts.length === 0) {
-    const imgMatches = [...html.matchAll(/<img [^>]*alt="([^"]+)"[^>]*src="([^"]+)"/gi)];
-    for (const m of imgMatches) {
-      const alt = m[1];
-      const src = m[2].replace(/&amp;/g, '&');
-      if (alt.toLowerCase().includes('foto do perfil') || alt.toLowerCase().includes('profile picture')) {
-        if (!avatarUrl) avatarUrl = src;
-      } else if (alt.length > 3 && (src.includes('cdninstagram') || src.includes('fbcdn'))) {
-        posts.push({
-          id: `post_${posts.length + 1}`,
-          url: `https://www.instagram.com/${username}/`,
-          thumbnail: src,
-          caption: alt,
-          is_video: false,
-          type: 'photo',
-          like_count: Math.floor(Math.random() * 850) + 120,
-          comment_count: Math.floor(Math.random() * 45) + 5,
-          view_count: 0,
-          save_count: Math.floor(Math.random() * 25) + 3,
-          order_index: posts.length + 1,
-          direct_media_url: src,
-        });
-      }
-    }
-  }
-
-  // 6. Respeitar a quantidade selecionada pelo usuário
+  // Respeitar quantidade selecionada pelo usuário
   if (maxItems > 0 && posts.length > maxItems) {
     posts = posts.slice(0, maxItems);
   }
 
-  // 7. Incluir Foto de Perfil HD (1080x1080) como mídia para download direto
+  // Incluir itens de Destaques para navegação de abas
+  highlights.forEach((h) => {
+    posts.push({
+      id: h.id,
+      url: h.url,
+      thumbnail: h.cover,
+      caption: `Destaque: ${h.title}`,
+      is_video: false,
+      type: 'highlight',
+      highlight_id: h.highlight_id,
+      highlight_name: h.title,
+      like_count: 0,
+      comment_count: 0,
+      view_count: 0,
+      save_count: 0,
+      order_index: posts.length + 1,
+      direct_media_url: h.cover,
+    });
+  });
+
+  // Incluir Foto de Perfil HD (1080x1080) como mídia para download direto
   if (avatarUrl) {
     posts.push({
       id: 'avatar_profile',
@@ -366,13 +347,9 @@ export async function scrapeInstagramProfile(inputUrl: string, maxItems: number 
     });
   }
 
-  const feedPostsCount = posts.filter((p) => p.type !== 'avatar').length;
-  if (feedPostsCount === 0 && !avatarUrl) {
-    const titleMatch = html.match(/<title>([\s\S]*?)<\/title>/i);
-    const bodySnippet = html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 200);
-    throw new Error(
-      `Instagram retornou página (Len: ${html.length}, Title: "${titleMatch ? titleMatch[1] : 'sem título'}"). Conteúdo: "${bodySnippet}".`
-    );
+  const feedPostsCount = posts.filter((p) => p.type !== 'avatar' && p.type !== 'highlight').length;
+  if (feedPostsCount === 0 && highlights.length === 0 && !avatarUrl) {
+    throw new Error(`Nenhuma publicação pública foi retornada para o perfil @${username}.`);
   }
 
   return {
@@ -388,6 +365,6 @@ export async function scrapeInstagramProfile(inputUrl: string, maxItems: number 
       is_verified: !!rawUser?.is_verified,
     },
     posts,
-    highlights: [],
+    highlights,
   };
 }
