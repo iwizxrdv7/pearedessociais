@@ -319,9 +319,23 @@ export default function InstagramDownloaderPage() {
           </form>
 
           {error && (
-            <div className="p-3.5 bg-rose-500/10 border border-rose-500/30 rounded-2xl flex items-center gap-2.5 text-xs text-rose-400">
-              <AlertCircle className="w-4 h-4 flex-shrink-0" />
-              <span>{error}</span>
+            <div className="p-4 bg-rose-500/10 border border-rose-500/30 rounded-2xl space-y-2 text-xs text-rose-300">
+              <div className="flex items-center gap-2.5 font-bold text-rose-400">
+                <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                <span>{error}</span>
+              </div>
+              {error.includes('INICIAR_SISTEMA') && (
+                <div className="pl-6 text-[11px] text-gray-400 space-y-1 pt-1 border-t border-rose-500/20">
+                  <p className="font-semibold text-rose-200">
+                    💡 Como resolver em 3 segundos:
+                  </p>
+                  <ol className="list-decimal pl-4 space-y-0.5 text-gray-300">
+                    <li>Abra a pasta do projeto no Windows.</li>
+                    <li>Dê dois cliques no arquivo <code className="bg-gray-800 text-pink-400 px-1 py-0.5 rounded">INICIAR_SISTEMA.bat</code> (ou execute <code className="bg-gray-800 text-pink-400 px-1 py-0.5 rounded">python mediahub_runner.py</code>).</li>
+                    <li>Acesse diretamente em <a href="http://localhost:3000/instagram" className="text-pink-400 underline font-semibold">http://localhost:3000/instagram</a> para extração 100% livre de bloqueios.</li>
+                  </ol>
+                </div>
+              )}
             </div>
           )}
 

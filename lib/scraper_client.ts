@@ -164,7 +164,7 @@ export async function fetchInstagramProfile(query: string, maxItems: number = 0)
       };
     }
     throw new Error(
-      'Nenhuma publicação pública foi retornada. Inicie o motor local com "python mediahub_runner.py" ou insira o link direto de um Reel/Post.'
+      'Para analisar perfis e destaques completos sem bloqueios do Instagram, inicie o motor local executando o arquivo "INICIAR_SISTEMA.bat" na pasta do projeto (ou utilize em http://localhost:3000).'
     );
   }
 

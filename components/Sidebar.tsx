@@ -131,16 +131,65 @@ export function Sidebar() {
         </div>
       </div>
 
-      {/* Footer Info */}
+      {/* Footer Info com Checagem de Saúde do Motor */}
       <div className="p-3.5 border-t border-gray-800">
-        <div className="bg-gradient-to-br from-gray-900 to-gray-950 p-3 rounded-xl border border-gray-800 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-            <span className="text-[11px] font-semibold text-gray-300">Motor FFmpeg & API</span>
-          </div>
-          <span className="text-[10px] bg-emerald-500/10 text-emerald-400 px-1.5 py-0.5 rounded font-mono">Pronto</span>
-        </div>
+        <EngineStatusBadge />
       </div>
     </aside>
+  );
+}
+
+function EngineStatusBadge() {
+  const [isOnline, setIsOnline] = React.useState<boolean | null>(null);
+
+  React.useEffect(() => {
+    let mounted = true;
+    const checkHealth = async () => {
+      try {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 2000);
+        const res = await fetch('http://127.0.0.1:8000/api/health', { signal: controller.signal });
+        clearTimeout(timeout);
+        if (mounted) setIsOnline(res.ok);
+      } catch {
+        if (mounted) setIsOnline(false);
+      }
+    };
+
+    checkHealth();
+    const interval = setInterval(checkHealth, 8000);
+    return () => {
+      mounted = false;
+      clearInterval(interval);
+    };
+  }, []);
+
+  if (isOnline === true) {
+    return (
+      <div className="bg-gradient-to-br from-gray-900 to-gray-950 p-3 rounded-xl border border-emerald-500/20 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+          <span className="text-[11px] font-semibold text-gray-200">Motor Playwright</span>
+        </div>
+        <span className="text-[10px] bg-emerald-500/10 text-emerald-400 px-1.5 py-0.5 rounded font-mono font-bold">
+          ONLINE
+        </span>
+      </div>
+    );
+  }
+
+  return (
+    <div
+      className="bg-gradient-to-br from-gray-900 to-gray-950 p-3 rounded-xl border border-amber-500/20 flex items-center justify-between cursor-pointer group"
+      title="Motor local desconectado. Execute INICIAR_SISTEMA.bat na pasta do projeto para extração 100% livre de bloqueios."
+    >
+      <div className="flex items-center gap-2">
+        <span className="w-2 h-2 rounded-full bg-amber-400"></span>
+        <span className="text-[11px] font-semibold text-gray-300">Motor Local</span>
+      </div>
+      <span className="text-[10px] bg-amber-500/10 text-amber-400 px-1.5 py-0.5 rounded font-mono font-bold group-hover:bg-amber-500/20 transition">
+        OFFLINE
+      </span>
+    </div>
   );
 }
