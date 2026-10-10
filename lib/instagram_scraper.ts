@@ -95,7 +95,21 @@ export function extractInstagramUsername(input: string): string {
   return text.replace(/^@/, '').trim();
 }
 
-function fetchInstagramChrome(username: string): Promise<string> {
+async function fetchInstagramChrome(username: string): Promise<string> {
+  const targetUrl = `https://www.instagram.com/${username}/`;
+
+  if (process.env.SCRAPER_API_KEY) {
+    try {
+      const proxyUrl = `https://api.scraperapi.com?api_key=${process.env.SCRAPER_API_KEY}&url=${encodeURIComponent(targetUrl)}`;
+      const res = await fetch(proxyUrl);
+      if (res.ok) {
+        return await res.text();
+      }
+    } catch (e) {
+      console.warn('ScraperAPI falhou, tentando fallback:', e);
+    }
+  }
+
   return new Promise((resolve, reject) => {
     const options: https.RequestOptions = {
       hostname: 'www.instagram.com',
@@ -124,8 +138,14 @@ function fetchInstagramChrome(username: string): Promise<string> {
       let data = '';
       res.on('data', (chunk) => (data += chunk));
       res.on('end', () => {
-        if (res.statusCode && res.statusCode >= 400) {
-          reject(new Error(`Instagram HTTP ${res.statusCode} (Len: ${data.length}, Body: ${data.slice(0, 150)})`));
+        if (res.statusCode === 301 || res.statusCode === 302) {
+          reject(
+            new Error(
+              `O Meta/Instagram bloqueou a conexão direta dos servidores da Vercel (Redirecionamento 302 para login). Para funcionamento 100% em nuvem, configure a variável BACKEND_API_URL (com um backend gratuito no Render) ou SCRAPER_API_KEY nas configurações da Vercel.`
+            )
+          );
+        } else if (res.statusCode && res.statusCode >= 400) {
+          reject(new Error(`Instagram HTTP ${res.statusCode} (Len: ${data.length})`));
         } else {
           resolve(data);
         }
