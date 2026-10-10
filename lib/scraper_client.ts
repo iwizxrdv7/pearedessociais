@@ -49,7 +49,7 @@ export async function fetchInstagramProfile(query: string, maxItems: number = 0)
   // 1. Tentar chamar o motor local Playwright (127.0.0.1:8000) se estiver rodando na máquina
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 12000);
+    const timeoutId = setTimeout(() => controller.abort(), 35000);
 
     const localRes = await fetch('http://127.0.0.1:8000/api/instagram/analyze', {
       method: 'POST',
@@ -140,7 +140,7 @@ export async function fetchTikTokProfile(query: string, maxItems: number = 0): P
   // 1. Tentar chamar o motor local Playwright (127.0.0.1:8000)
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 12000);
+    const timeoutId = setTimeout(() => controller.abort(), 35000);
 
     const localRes = await fetch('http://127.0.0.1:8000/api/tiktok/analyze', {
       method: 'POST',
