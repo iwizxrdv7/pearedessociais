@@ -10,16 +10,19 @@ export async function POST(req: Request) {
 
     const username = extractTikTokUsername(url);
 
-    // 1. Tentar conectar ao serviço backend FastAPI se configurado em nuvem
-    if (process.env.BACKEND_API_URL && !process.env.BACKEND_API_URL.includes('127.0.0.1') && !process.env.BACKEND_API_URL.includes('localhost')) {
+    // 1. Conectar ao backend FastAPI em nuvem (Render) com fallback automático e sanitização de barras
+    const rawBackendUrl = process.env.BACKEND_API_URL || 'https://pearedessociais.onrender.com';
+    const backendBase = rawBackendUrl.trim().replace(/\/+$/, '');
+
+    if (backendBase && !backendBase.includes('127.0.0.1') && !backendBase.includes('localhost')) {
       try {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 25000);
 
-        const fastApiRes = await fetch(`${process.env.BACKEND_API_URL}/api/tiktok/analyze`, {
+        const fastApiRes = await fetch(`${backendBase}/api/tiktok/analyze`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ url, max_items: Number(max_items || 0) }),
+          body: JSON.stringify({ url: username || url, max_items: Number(max_items || 0) }),
           signal: controller.signal,
         });
         clearTimeout(timeoutId);
