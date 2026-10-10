@@ -88,11 +88,17 @@ export function extractInstagramUsername(input: string): string {
   if (text.includes('?')) {
     text = text.split('?')[0];
   }
-  const match = text.match(/(?:instagram\.com\/)?(?:p\/|reel\/|stories\/)?@?([a-zA-Z0-9_.-]+)/);
-  if (match) {
-    return match[1].replace(/\/$/, '');
+  if (text.includes('instagram.com/')) {
+    const afterDomain = text.split('instagram.com/')[1] || '';
+    const parts = afterDomain.split('/').filter(Boolean);
+    if (parts.length > 0) {
+      if (['p', 'reel', 'stories', 'tv'].includes(parts[0])) {
+        return text;
+      }
+      return parts[0].replace(/^@/, '').trim();
+    }
   }
-  return text.replace(/^@/, '').trim();
+  return text.replace(/^@/, '').replace(/\/$/, '').trim();
 }
 
 async function fetchInstagramChrome(username: string): Promise<string> {
