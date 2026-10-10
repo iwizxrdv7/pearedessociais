@@ -74,8 +74,12 @@ export default function DashboardPage() {
 
       <div className="p-8 max-w-7xl mx-auto space-y-8">
         {/* Hero Welcome Banner */}
-        <div className="bg-gradient-to-r from-indigo-900/40 via-purple-900/30 to-gray-900 border border-indigo-500/20 rounded-3xl p-8 relative overflow-hidden shadow-2xl">
-          <div className="absolute right-0 top-0 w-96 h-96 bg-indigo-600/10 rounded-full blur-3xl pointer-events-none"></div>
+        <div
+          className="border border-gray-800 rounded-3xl p-7 relative overflow-hidden shadow-lg"
+          style={{
+            background: 'radial-gradient(circle at 95% 10%, rgba(99, 102, 241, 0.15) 0%, #111726 70%)',
+          }}
+        >
           <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
             <div>
               <div className="inline-flex items-center gap-2 bg-indigo-500/15 border border-indigo-500/30 px-3 py-1 rounded-full text-indigo-400 text-xs font-semibold mb-3">
@@ -93,14 +97,14 @@ export default function DashboardPage() {
             <div className="flex items-center gap-3">
               <Link
                 href="/contas"
-                className="py-3 px-5 bg-gray-900/80 hover:bg-gray-800 text-white font-semibold text-xs rounded-2xl border border-gray-700 transition flex items-center gap-2 shadow-sm"
+                className="py-3 px-5 bg-[#0B0F19] hover:bg-gray-800 text-white font-semibold text-xs rounded-2xl border border-gray-700 transition flex items-center gap-2 shadow-sm"
               >
                 <Users2 className="w-4 h-4 text-indigo-400" />
                 Gerenciar Perfis ({accounts.length})
               </Link>
               <Link
                 href="/fila"
-                className="py-3 px-5 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-bold text-xs rounded-2xl shadow-xl shadow-indigo-600/30 transition flex items-center gap-2"
+                className="py-3 px-5 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-bold text-xs rounded-2xl shadow-md shadow-indigo-600/30 transition flex items-center gap-2"
               >
                 <Send className="w-4 h-4" />
                 Subir Vídeos
@@ -111,7 +115,7 @@ export default function DashboardPage() {
 
         {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="bg-gray-900 border border-gray-800 p-5 rounded-3xl shadow-lg flex items-center justify-between">
+          <div className="bg-[#111726] border border-gray-800 p-5 rounded-2xl shadow-sm flex items-center justify-between">
             <div>
               <span className="text-xs text-gray-400 font-medium">Perfis Conectados</span>
               <div className="text-2xl font-extrabold text-white mt-1">
@@ -126,7 +130,7 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          <div className="bg-gray-900 border border-gray-800 p-5 rounded-3xl shadow-lg flex items-center justify-between">
+          <div className="bg-[#111726] border border-gray-800 p-5 rounded-2xl shadow-sm flex items-center justify-between">
             <div>
               <span className="text-xs text-gray-400 font-medium">Reels Agendados</span>
               <div className="text-2xl font-extrabold text-white mt-1">

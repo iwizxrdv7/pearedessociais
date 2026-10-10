@@ -2,15 +2,15 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { usePathname, useRouter } from 'next/navigation';
 import { SocialAccount } from '@/lib/types';
 import {
   ChevronDown,
   PlusCircle,
-  Instagram,
-  Facebook,
   Sparkles,
   CheckCircle2,
-  AlertCircle
+  LogOut,
+  User
 } from 'lucide-react';
 
 interface HeaderProps {
@@ -19,6 +19,14 @@ interface HeaderProps {
 }
 
 export function Header({ selectedAccountId, onSelectAccount }: HeaderProps) {
+  const pathname = usePathname();
+  const router = useRouter();
+
+  // Não exibir cabeçalho na tela de login
+  if (pathname === '/login') {
+    return null;
+  }
+
   const [accounts, setAccounts] = useState<SocialAccount[]>([]);
   const [isOpen, setIsOpen] = useState(false);
   const [activeAccount, setActiveAccount] = useState<SocialAccount | null>(null);
@@ -47,13 +55,21 @@ export function Header({ selectedAccountId, onSelectAccount }: HeaderProps) {
     if (onSelectAccount) onSelectAccount(account.id);
   };
 
+  const handleLogout = async () => {
+    try {
+      await fetch('/api/auth/logout', { method: 'POST' });
+    } catch {}
+    router.push('/login');
+    router.refresh();
+  };
+
   return (
-    <header className="h-20 bg-gray-950/80 backdrop-blur-md border-b border-gray-800 px-8 flex items-center justify-between sticky top-0 z-20">
+    <header className="h-16 bg-[#0B0F19] border-b border-gray-800 px-6 flex items-center justify-between sticky top-0 z-20">
       {/* Account Switcher Dropdown */}
       <div className="relative">
         <button
           onClick={() => setIsOpen(!isOpen)}
-          className="flex items-center gap-3 bg-gray-900 hover:bg-gray-800/80 border border-gray-700/80 px-4 py-2 rounded-xl transition-all shadow-sm"
+          className="flex items-center gap-3 bg-[#111726] hover:bg-[#161F33] border border-gray-700/80 px-3.5 py-1.5 rounded-xl transition shadow-sm"
         >
           {activeAccount ? (
             <div className="flex items-center gap-2.5">
@@ -61,9 +77,9 @@ export function Header({ selectedAccountId, onSelectAccount }: HeaderProps) {
                 <img
                   src={activeAccount.avatar || 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=80&h=80&fit=crop'}
                   alt={activeAccount.name}
-                  className="w-7 h-7 rounded-full object-cover ring-2 ring-indigo-500/40"
+                  className="w-6 h-6 rounded-full object-cover ring-1 ring-indigo-500/40"
                 />
-                <div className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-500 ring-2 ring-gray-950"></div>
+                <div className="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full bg-emerald-500 ring-1 ring-gray-950"></div>
               </div>
               <div className="text-left">
                 <div className="text-xs font-semibold text-white leading-tight flex items-center gap-1.5">
@@ -72,18 +88,18 @@ export function Header({ selectedAccountId, onSelectAccount }: HeaderProps) {
                     <span className="text-[10px] text-gray-400 font-normal">(@{activeAccount.instagram_username})</span>
                   )}
                 </div>
-                <div className="text-[10px] text-indigo-400 font-medium">Perfil Selecionado</div>
+                <div className="text-[9px] text-indigo-400 font-medium">Perfil Ativo</div>
               </div>
             </div>
           ) : (
             <span className="text-xs text-gray-400">Carregando perfis...</span>
           )}
-          <ChevronDown className="w-4 h-4 text-gray-400 ml-1" />
+          <ChevronDown className="w-3.5 h-3.5 text-gray-400 ml-1" />
         </button>
 
         {/* Dropdown Menu */}
         {isOpen && (
-          <div className="absolute left-0 mt-2 w-72 bg-gray-900 border border-gray-700 rounded-2xl shadow-2xl py-2 z-50">
+          <div className="absolute left-0 mt-2 w-72 bg-[#111726] border border-gray-700 rounded-2xl shadow-2xl py-2 z-50 animate-in fade-in zoom-in-95 duration-100">
             <div className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-gray-400 border-b border-gray-800">
               Alternar Perfil
             </div>
@@ -92,7 +108,7 @@ export function Header({ selectedAccountId, onSelectAccount }: HeaderProps) {
                 <button
                   key={account.id}
                   onClick={() => handleSelect(account)}
-                  className={`w-full flex items-center justify-between px-3 py-2 text-left hover:bg-gray-800 transition ${
+                  className={`w-full flex items-center justify-between px-3 py-2 text-left hover:bg-gray-800/80 transition ${
                     activeAccount?.id === account.id ? 'bg-indigo-600/15 text-indigo-400 font-semibold' : 'text-gray-300'
                   }`}
                 >
@@ -128,15 +144,24 @@ export function Header({ selectedAccountId, onSelectAccount }: HeaderProps) {
         )}
       </div>
 
-      {/* Quick Actions */}
-      <div className="flex items-center gap-4">
+      {/* Ações Rápidas */}
+      <div className="flex items-center gap-3">
         <Link
           href="/fila"
-          className="flex items-center gap-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-medium text-xs px-4 py-2 rounded-xl shadow-lg shadow-indigo-600/25 transition-all"
+          className="flex items-center gap-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-medium text-xs px-3.5 py-2 rounded-xl shadow-md shadow-indigo-600/25 transition-all"
         >
-          <Sparkles className="w-4 h-4" />
+          <Sparkles className="w-3.5 h-3.5" />
           + Subir Vídeos & Agendar
         </Link>
+
+        {/* Botão de Sair Rápido */}
+        <button
+          onClick={handleLogout}
+          title="Encerrar sessão"
+          className="p-2 text-gray-400 hover:text-rose-400 hover:bg-rose-500/10 rounded-xl transition"
+        >
+          <LogOut className="w-4 h-4" />
+        </button>
       </div>
     </header>
   );
