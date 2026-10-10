@@ -226,7 +226,15 @@ export default function TikTokDownloaderPage() {
                 <img
                   src={profile?.avatar || videos[0]?.thumbnail || 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=120&h=120&fit=crop'}
                   alt={profile?.nickname || 'Perfil'}
+                  referrerPolicy="no-referrer"
+                  crossOrigin="anonymous"
                   className="w-16 h-16 rounded-full object-cover ring-2 ring-indigo-500/40"
+                  onError={(e) => {
+                    const el = e.currentTarget;
+                    if (!el.src.includes('unsplash')) {
+                      el.src = 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=120&h=120&fit=crop';
+                    }
+                  }}
                 />
                 <div>
                   <h2 className="text-lg font-bold text-white flex items-center gap-2">
@@ -298,7 +306,15 @@ export default function TikTokDownloaderPage() {
                       <img
                         src={vid.thumbnail || 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=400&h=700&fit=crop'}
                         alt={vid.title}
+                        referrerPolicy="no-referrer"
+                        crossOrigin="anonymous"
                         className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
+                        onError={(e) => {
+                          const el = e.currentTarget;
+                          if (!el.src.includes('unsplash')) {
+                            el.src = 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=400&h=700&fit=crop';
+                          }
+                        }}
                       />
                       <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-transparent to-transparent"></div>
 

@@ -140,36 +140,44 @@ export function Sidebar() {
 }
 
 function EngineStatusBadge() {
-  const [isOnline, setIsOnline] = React.useState<boolean | null>(null);
+  const [status, setStatus] = React.useState<'online' | 'warming_up' | 'offline'>('online');
 
   React.useEffect(() => {
     let mounted = true;
     const checkHealth = async () => {
       try {
         const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 2000);
-        const res = await fetch('http://127.0.0.1:8000/api/health', { signal: controller.signal });
+        const timeout = setTimeout(() => controller.abort(), 8000);
+        const res = await fetch('/api/health', { signal: controller.signal, cache: 'no-store' });
         clearTimeout(timeout);
-        if (mounted) setIsOnline(res.ok);
+        if (mounted) {
+          if (res.ok) {
+            const data = await res.json();
+            setStatus(data.status === 'online' ? 'online' : 'warming_up');
+          } else {
+            setStatus('warming_up');
+          }
+        }
       } catch {
-        if (mounted) setIsOnline(false);
+        if (mounted) setStatus('warming_up');
       }
     };
 
     checkHealth();
-    const interval = setInterval(checkHealth, 8000);
+    // Ping a cada 20 segundos para manter o motor ativo e aquecido
+    const interval = setInterval(checkHealth, 20000);
     return () => {
       mounted = false;
       clearInterval(interval);
     };
   }, []);
 
-  if (isOnline === true) {
+  if (status === 'online') {
     return (
-      <div className="bg-gradient-to-br from-gray-900 to-gray-950 p-3 rounded-xl border border-emerald-500/20 flex items-center justify-between">
+      <div className="bg-gradient-to-br from-gray-900 to-gray-950 p-3 rounded-xl border border-emerald-500/20 flex items-center justify-between shadow-sm">
         <div className="flex items-center gap-2">
           <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-          <span className="text-[11px] font-semibold text-gray-200">Motor Playwright</span>
+          <span className="text-[11px] font-semibold text-gray-200">Motor em Nuvem</span>
         </div>
         <span className="text-[10px] bg-emerald-500/10 text-emerald-400 px-1.5 py-0.5 rounded font-mono font-bold">
           ONLINE
@@ -181,14 +189,14 @@ function EngineStatusBadge() {
   return (
     <div
       className="bg-gradient-to-br from-gray-900 to-gray-950 p-3 rounded-xl border border-amber-500/20 flex items-center justify-between cursor-pointer group"
-      title="Motor local desconectado. Execute INICIAR_SISTEMA.bat na pasta do projeto para extração 100% livre de bloqueios."
+      title="O motor em nuvem está conectando para processar seus downloads e limpeza de metadados."
     >
       <div className="flex items-center gap-2">
-        <span className="w-2 h-2 rounded-full bg-amber-400"></span>
-        <span className="text-[11px] font-semibold text-gray-300">Motor Local</span>
+        <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
+        <span className="text-[11px] font-semibold text-gray-300">Motor em Nuvem</span>
       </div>
       <span className="text-[10px] bg-amber-500/10 text-amber-400 px-1.5 py-0.5 rounded font-mono font-bold group-hover:bg-amber-500/20 transition">
-        OFFLINE
+        CONECTANDO
       </span>
     </div>
   );

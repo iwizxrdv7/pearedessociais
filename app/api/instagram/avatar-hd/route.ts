@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 
+export const dynamic = 'force-dynamic';
+export const maxDuration = 60;
+
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
@@ -17,7 +20,7 @@ export async function GET(req: NextRequest) {
     if (username && backendBase && !backendBase.includes('127.0.0.1') && !backendBase.includes('localhost')) {
       try {
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 20000);
+        const timeoutId = setTimeout(() => controller.abort(), 40000);
 
         const backendRes = await fetch(`${backendBase}/api/instagram/avatar-hd?username=${encodeURIComponent(username)}`, {
           signal: controller.signal,
