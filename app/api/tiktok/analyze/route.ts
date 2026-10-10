@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { executePythonBridge } from '@/lib/mediahub_bridge';
+import { scrapeTikTokProfile } from '@/lib/tiktok_scraper';
 
 export async function POST(req: Request) {
   try {
@@ -8,7 +8,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'URL ou @usuário do TikTok é obrigatório.' }, { status: 400 });
     }
 
-    const data = await executePythonBridge(['tiktok_analyze', url, String(max_items || 0)]);
+    const data = await scrapeTikTokProfile(url, Number(max_items || 0));
     return NextResponse.json({ status: 'success', data });
   } catch (err: any) {
     return NextResponse.json({ error: err.message || 'Falha ao analisar perfil do TikTok.' }, { status: 400 });
