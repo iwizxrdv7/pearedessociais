@@ -383,7 +383,7 @@ export async function scrapeInstagramProfile(
       view_count: 0,
       save_count: 0,
       order_index: posts.length + 1,
-      direct_media_url: avatarUrl,
+      direct_media_url: `/api/instagram/avatar-hd?username=${encodeURIComponent(username)}&url=${encodeURIComponent(avatarUrl)}`,
     });
   }
 

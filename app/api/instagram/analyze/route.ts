@@ -54,20 +54,27 @@ export async function POST(req: Request) {
             story_index: p.story_index,
           }));
 
-          // Garantir que a Foto de Perfil HD está incluída na lista de mídias para exibição e download
+          // Garantir que a Foto de Perfil HD está incluída na lista de mídias para exibição e download com super-resolução
           const avatarUrl = rawUser.avatar || '';
-          if (avatarUrl && !formattedPosts.some((p: any) => p.type === 'avatar' || p.id === 'avatar_profile')) {
+          const targetUsername = rawUser.username || username;
+          const avatarHdUrl = `/api/instagram/avatar-hd?username=${encodeURIComponent(targetUsername)}&url=${encodeURIComponent(avatarUrl)}`;
+
+          const existingAvatarIdx = formattedPosts.findIndex((p: any) => p.type === 'avatar' || p.id === 'avatar_profile');
+          if (existingAvatarIdx >= 0) {
+            formattedPosts[existingAvatarIdx].direct_media_url = avatarHdUrl;
+            formattedPosts[existingAvatarIdx].caption = `Foto de Perfil HD (1080x1080) - @${targetUsername}`;
+          } else if (avatarUrl) {
             formattedPosts.push({
               id: 'avatar_profile',
-              url: avatarUrl,
+              url: avatarHdUrl,
               thumbnail: avatarUrl,
-              caption: `Foto de Perfil HD (1080x1080) - @${rawUser.username || username}`,
+              caption: `Foto de Perfil HD (1080x1080) - @${targetUsername}`,
               is_video: false,
               like_count: 0,
               comment_count: 0,
               view_count: 0,
               save_count: 0,
-              direct_media_url: avatarUrl,
+              direct_media_url: avatarHdUrl,
               type: 'avatar',
             });
           }

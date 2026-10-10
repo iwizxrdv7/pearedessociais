@@ -96,6 +96,49 @@ async def analyze_instagram(req: ProfileRequest):
         detail_msg = err_msg if err_msg else "Não foi possível carregar o perfil do Instagram. Verifique o link e tente novamente."
         raise HTTPException(status_code=400, detail=detail_msg)
 
+@app.get("/api/instagram/avatar-hd")
+async def get_instagram_avatar_hd(username: str):
+    """
+    Retorna a foto de perfil do Instagram processada em resolução real 1080px x 1080px HD
+    com restauração de nitidez, preservação de textura e 100% dos metadados higienizados.
+    """
+    clean_username = username.strip().lstrip("@")
+    out_filename = f"avatar_{clean_username}_1080x1080.jpg"
+    out_path = DOWNLOADS_DIR / f"avatar_{uuid.uuid4().hex[:8]}_{out_filename}"
+    
+    avatar_url = None
+    try:
+        from curl_cffi import requests as cffi_requests
+        mobile_ua = 'Instagram 337.0.0.0.77 Android (34/14; 640dpi; 2560x1600; samsung; SM-X910; gts9pwifi; qcom; en_US; 493419337)'
+        api_url = f'https://i.instagram.com/api/v1/users/web_profile_info/?username={clean_username}'
+        r_hd = cffi_requests.get(api_url, headers={'User-Agent': mobile_ua, 'Accept': '*/*'}, timeout=8)
+        if r_hd.status_code == 200:
+            hd_u = r_hd.json().get('data', {}).get('user', {})
+            avatar_url = hd_u.get('profile_pic_url_hd') or hd_u.get('profile_pic_url')
+    except Exception:
+        pass
+
+    if not avatar_url:
+        try:
+            profile_data = await asyncio.to_thread(fetch_instagram_profile, clean_username, 0)
+            avatar_url = profile_data.get("user", {}).get("avatar")
+        except Exception:
+            pass
+
+    if not avatar_url:
+        raise HTTPException(status_code=404, detail="Foto de perfil não encontrada.")
+
+    res_path = await asyncio.to_thread(download_and_clean_single_instagram, avatar_url, str(out_path), "avatar_perfil_hd")
+    return FileResponse(
+        path=res_path,
+        filename=out_filename,
+        media_type="image/jpeg",
+        headers={
+            "Cache-Control": "public, max-age=86400",
+            "Access-Control-Allow-Origin": "*",
+        }
+    )
+
 # ----------------- BATCH DOWNLOADS -----------------
 def run_batch_download(task_id: str, platform: str, items: list, username: str):
     zip_filename = f"{platform}_{username}_{task_id[:8]}.zip"

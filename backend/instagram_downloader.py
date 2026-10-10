@@ -100,9 +100,27 @@ def fetch_instagram_profile_fast_curl(username: str, max_posts: int = 0) -> Opti
         if not raw_edges and not raw_user:
             return None
 
+        # 1. Busca a Foto de Perfil em Alta Definição (HD 320x320) via endpoint oficial mobile do Instagram
+        hd_avatar_url = None
+        try:
+            mobile_ua = 'Instagram 337.0.0.0.77 Android (34/14; 640dpi; 2560x1600; samsung; SM-X910; gts9pwifi; qcom; en_US; 493419337)'
+            api_url = f'https://i.instagram.com/api/v1/users/web_profile_info/?username={username}'
+            r_hd = cffi_requests.get(api_url, headers={'User-Agent': mobile_ua, 'Accept': '*/*'}, timeout=8)
+            if r_hd.status_code == 200:
+                hd_data = r_hd.json()
+                hd_u = hd_data.get('data', {}).get('user', {})
+                hd_avatar_url = hd_u.get('profile_pic_url_hd') or hd_u.get('profile_pic_url')
+                if raw_user and hd_u:
+                    if not raw_user.get('follower_count') and hd_u.get('edge_followed_by', {}).get('count'):
+                        raw_user['follower_count'] = hd_u['edge_followed_by']['count']
+                    if not raw_user.get('following_count') and hd_u.get('edge_follow', {}).get('count'):
+                        raw_user['following_count'] = hd_u['edge_follow']['count']
+        except Exception:
+            pass
+
         og_img_match = re.search(r'<meta [^>]*property="og:image" [^>]*content="([^"]*)"', html, re.I)
         og_img = og_img_match.group(1).replace('&amp;', '&') if og_img_match else ''
-        avatar_url = (raw_user.get('profile_pic_url') if raw_user else og_img) or og_img
+        avatar_url = hd_avatar_url or (raw_user.get('profile_pic_url') if raw_user else og_img) or og_img
 
         user_info = {
             'username': username,

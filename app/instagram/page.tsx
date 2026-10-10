@@ -229,8 +229,11 @@ export default function InstagramDownloaderPage() {
   const handleDownloadSingle = async (post: InstagramPost) => {
     try {
       setDownloadingSingleId(post.id);
-      const mediaUrl = post.direct_media_url || post.thumbnail;
       const isAvatar = post.type === 'avatar';
+      let mediaUrl = post.direct_media_url || post.thumbnail;
+      if (isAvatar && profile?.username && !mediaUrl.includes('/api/instagram/avatar-hd')) {
+        mediaUrl = `/api/instagram/avatar-hd?username=${encodeURIComponent(profile.username)}&url=${encodeURIComponent(mediaUrl)}`;
+      }
       const safeTitle = isAvatar
         ? `avatar_${profile?.username || 'instagram'}`
         : (post.caption || `instagram_${post.id}`).slice(0, 30);
@@ -250,13 +253,19 @@ export default function InstagramDownloaderPage() {
       setDownloadingZip(true);
       setZipProgress(0);
 
-      const items = selectedPosts.map((p) => ({
-        id: p.id,
-        url: p.direct_media_url || p.thumbnail,
-        title: p.type === 'avatar' ? `avatar_${profile?.username || 'instagram'}` : p.caption,
-        isVideo: p.is_video,
-        type: p.type,
-      }));
+      const items = selectedPosts.map((p) => {
+        let url = p.direct_media_url || p.thumbnail;
+        if (p.type === 'avatar' && profile?.username && !url.includes('/api/instagram/avatar-hd')) {
+          url = `/api/instagram/avatar-hd?username=${encodeURIComponent(profile.username)}&url=${encodeURIComponent(url)}`;
+        }
+        return {
+          id: p.id,
+          url,
+          title: p.type === 'avatar' ? `avatar_${profile?.username || 'instagram'}` : p.caption,
+          isVideo: p.is_video,
+          type: p.type,
+        };
+      });
 
       await downloadCleanBatchZip(items, profile?.username || 'instagram', (pct) => {
         setZipProgress(pct);
