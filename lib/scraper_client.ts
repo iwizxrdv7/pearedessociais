@@ -62,14 +62,16 @@ export async function fetchInstagramProfile(query: string, maxItems: number = 0)
     if (localRes.ok) {
       const data = await localRes.json();
       const rawPosts = data.data?.posts || data.data?.videos || [];
+      const rawUser = data.data?.user || data.data?.user_info || {};
+
       if (rawPosts.length > 0) {
         return {
-          user_info: data.data?.user_info || {
-            username: cleanQuery,
-            nickname: cleanQuery,
-            avatar: rawPosts[0]?.cover || rawPosts[0]?.thumbnail || '',
-            signature: 'Perfil verificado com sucesso via Playwright Local',
-            follower_count: 0,
+          user_info: {
+            username: rawUser.username || cleanQuery,
+            nickname: rawUser.nickname || rawUser.username || cleanQuery,
+            avatar: rawUser.avatar || rawPosts[0]?.cover || rawPosts[0]?.thumbnail || '',
+            signature: rawUser.signature || 'Perfil verificado via Playwright Local',
+            follower_count: Number(rawUser.followers_count) || 0,
             video_count: rawPosts.length,
           },
           posts: rawPosts.map((p: any) => ({
@@ -104,7 +106,9 @@ export async function fetchInstagramProfile(query: string, maxItems: number = 0)
     throw new Error(data.error || 'Erro ao analisar perfil do Instagram.');
   }
 
-  const posts = data.data?.posts || [];
+  const posts = data.data?.posts || data.data?.videos || [];
+  const rawUser = data.data?.user || data.data?.user_info || {};
+
   if (posts.length === 0) {
     // Se for URL de post único, tenta resolver direto via oEmbed
     if (cleanQuery.includes('/p/') || cleanQuery.includes('/reel/')) {
@@ -131,7 +135,27 @@ export async function fetchInstagramProfile(query: string, maxItems: number = 0)
     );
   }
 
-  return data.data;
+  return {
+    user_info: {
+      username: rawUser.username || cleanQuery,
+      nickname: rawUser.nickname || rawUser.username || cleanQuery,
+      avatar: rawUser.avatar || posts[0]?.thumbnail || '',
+      signature: rawUser.signature || 'Perfil Instagram',
+      follower_count: Number(rawUser.follower_count || rawUser.followers_count) || 0,
+      video_count: posts.length,
+    },
+    posts: posts.map((p: any) => ({
+      id: p.id,
+      url: p.url || p.play_url || `https://www.instagram.com/p/${p.id}/`,
+      thumbnail: p.thumbnail || p.cover || '',
+      caption: p.caption || p.title || 'Sem legenda',
+      is_video: p.is_video ?? true,
+      like_count: p.like_count || 0,
+      comment_count: p.comment_count || 0,
+      direct_media_url: p.direct_media_url || p.play_url || '',
+      type: p.type || 'reel',
+    })),
+  };
 }
 
 export async function fetchTikTokProfile(query: string, maxItems: number = 0): Promise<ProfileResult> {
@@ -153,14 +177,16 @@ export async function fetchTikTokProfile(query: string, maxItems: number = 0): P
     if (localRes.ok) {
       const data = await localRes.json();
       const rawVideos = data.data?.videos || [];
+      const rawUser = data.data?.user_info || data.data?.user || {};
+
       if (rawVideos.length > 0) {
         return {
-          user_info: data.data?.user_info || {
-            username: cleanQuery,
-            nickname: cleanQuery,
-            avatar: rawVideos[0]?.cover || rawVideos[0]?.thumbnail || '',
-            signature: 'Perfil TikTok verificado via motor local',
-            follower_count: 0,
+          user_info: {
+            username: rawUser.username || cleanQuery,
+            nickname: rawUser.nickname || cleanQuery,
+            avatar: rawUser.avatar || rawVideos[0]?.cover || rawVideos[0]?.thumbnail || '',
+            signature: rawUser.signature || 'Perfil TikTok verificado via motor local',
+            follower_count: rawUser.follower_count || 0,
             video_count: rawVideos.length,
           },
           videos: rawVideos.map((v: any) => ({
@@ -194,6 +220,8 @@ export async function fetchTikTokProfile(query: string, maxItems: number = 0): P
   }
 
   const videos = data.data?.videos || [];
+  const rawUser = data.data?.user_info || data.data?.user || {};
+
   if (videos.length === 0) {
     // Se for link de vídeo direto
     if (cleanQuery.includes('/video/')) {
@@ -220,5 +248,25 @@ export async function fetchTikTokProfile(query: string, maxItems: number = 0): P
     );
   }
 
-  return data.data;
+  return {
+    user_info: {
+      username: rawUser.username || cleanQuery,
+      nickname: rawUser.nickname || cleanQuery,
+      avatar: rawUser.avatar || videos[0]?.thumbnail || '',
+      signature: rawUser.signature || 'Perfil TikTok',
+      follower_count: rawUser.follower_count || 0,
+      video_count: videos.length,
+    },
+    videos: videos.map((v: any) => ({
+      id: v.id,
+      url: v.url || `https://www.tiktok.com/@${cleanQuery}/video/${v.id}`,
+      thumbnail: v.thumbnail || v.cover || '',
+      title: v.title || 'Vídeo sem legenda',
+      duration: v.duration || 0,
+      view_count: v.view_count || 0,
+      like_count: v.like_count || 0,
+      comment_count: v.comment_count || 0,
+      direct_video_url: v.direct_video_url || '',
+    })),
+  };
 }
