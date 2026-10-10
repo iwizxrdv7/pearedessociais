@@ -18,6 +18,7 @@ import {
   Loader2
 } from 'lucide-react';
 import { downloadCleanSingleMedia, downloadCleanBatchZip } from '@/lib/media_downloader';
+import { fetchTikTokProfile } from '@/lib/scraper_client';
 
 interface TikTokVideo {
   id: string;
@@ -67,20 +68,13 @@ export default function TikTokDownloaderPage() {
     setVideos([]);
 
     try {
-      const res = await fetch('/api/tiktok/analyze', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: query.trim(), max_items: Number(maxVideos) }),
-      });
+      const data = await fetchTikTokProfile(query.trim(), Number(maxVideos));
 
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Erro ao analisar perfil.');
-
-      if (data.data?.user_info) {
-        setProfile(data.data.user_info);
+      if (data.user_info) {
+        setProfile(data.user_info as any);
       }
 
-      const fetchedVideos: TikTokVideo[] = data.data.videos || [];
+      const fetchedVideos: TikTokVideo[] = (data.videos || []) as any;
       if (fetchedVideos.length === 0) {
         throw new Error('Nenhum vídeo encontrado para este perfil do TikTok.');
       }

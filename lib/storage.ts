@@ -3,13 +3,19 @@ import path from 'path';
 import { SocialAccount, VideoPost } from './types';
 import { supabaseAdmin } from './supabase';
 
-const DB_DIR = path.join(process.cwd(), 'data');
+const isVercel = !!process.env.VERCEL;
+const DB_DIR = isVercel ? path.join('/tmp', 'data') : path.join(process.cwd(), 'data');
 const ACCOUNTS_FILE = path.join(DB_DIR, 'accounts.json');
 const POSTS_FILE = path.join(DB_DIR, 'posts.json');
 
-// Garantir diretório de dados local
-if (!fs.existsSync(DB_DIR)) {
-  fs.mkdirSync(DB_DIR, { recursive: true });
+function ensureDbDir() {
+  try {
+    if (!fs.existsSync(DB_DIR)) {
+      fs.mkdirSync(DB_DIR, { recursive: true });
+    }
+  } catch (e) {
+    // Ignore read-only filesystem errors
+  }
 }
 
 export async function getAccountsAsync(): Promise<SocialAccount[]> {
@@ -25,14 +31,12 @@ export async function getAccountsAsync(): Promise<SocialAccount[]> {
 }
 
 export async function saveAccountAsync(account: SocialAccount): Promise<void> {
-  // Salvar no Supabase
   try {
     const { error } = await supabaseAdmin.from('accounts').upsert(account);
     if (error) console.error('Erro ao salvar conta no Supabase:', error);
   } catch (e) {
     console.warn('Erro Supabase upsert:', e);
   }
-  // Salvar localmente
   const accounts = getAccountsLocal();
   const idx = accounts.findIndex((a) => a.id === account.id);
   if (idx >= 0) {
@@ -110,8 +114,9 @@ export function savePosts(posts: VideoPost[]): void {
 }
 
 function getAccountsLocal(): SocialAccount[] {
-  if (!fs.existsSync(ACCOUNTS_FILE)) return [];
+  ensureDbDir();
   try {
+    if (!fs.existsSync(ACCOUNTS_FILE)) return [];
     return JSON.parse(fs.readFileSync(ACCOUNTS_FILE, 'utf-8'));
   } catch {
     return [];
@@ -119,12 +124,18 @@ function getAccountsLocal(): SocialAccount[] {
 }
 
 function saveAccountsLocal(accounts: SocialAccount[]): void {
-  fs.writeFileSync(ACCOUNTS_FILE, JSON.stringify(accounts, null, 2), 'utf-8');
+  ensureDbDir();
+  try {
+    fs.writeFileSync(ACCOUNTS_FILE, JSON.stringify(accounts, null, 2), 'utf-8');
+  } catch (e) {
+    console.warn('Não foi possível gravar localmente:', e);
+  }
 }
 
 function getPostsLocal(): VideoPost[] {
-  if (!fs.existsSync(POSTS_FILE)) return [];
+  ensureDbDir();
   try {
+    if (!fs.existsSync(POSTS_FILE)) return [];
     return JSON.parse(fs.readFileSync(POSTS_FILE, 'utf-8'));
   } catch {
     return [];
@@ -132,5 +143,10 @@ function getPostsLocal(): VideoPost[] {
 }
 
 function savePostsLocal(posts: VideoPost[]): void {
-  fs.writeFileSync(POSTS_FILE, JSON.stringify(posts, null, 2), 'utf-8');
+  ensureDbDir();
+  try {
+    fs.writeFileSync(POSTS_FILE, JSON.stringify(posts, null, 2), 'utf-8');
+  } catch (e) {
+    console.warn('Não foi possível gravar posts localmente:', e);
+  }
 }

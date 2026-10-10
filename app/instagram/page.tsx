@@ -18,6 +18,7 @@ import {
   Loader2
 } from 'lucide-react';
 import { downloadCleanSingleMedia, downloadCleanBatchZip } from '@/lib/media_downloader';
+import { fetchInstagramProfile } from '@/lib/scraper_client';
 
 interface InstagramPost {
   id: string;
@@ -66,20 +67,13 @@ export default function InstagramDownloaderPage() {
     setPosts([]);
 
     try {
-      const res = await fetch('/api/instagram/analyze', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: query.trim(), max_items: Number(maxPosts) }),
-      });
+      const data = await fetchInstagramProfile(query.trim(), Number(maxPosts));
 
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Erro ao analisar perfil do Instagram.');
-
-      if (data.data?.user_info) {
-        setProfile(data.data.user_info);
+      if (data.user_info) {
+        setProfile(data.user_info as any);
       }
 
-      const fetchedPosts: InstagramPost[] = data.data.posts || [];
+      const fetchedPosts: InstagramPost[] = (data.posts || []) as any;
       if (fetchedPosts.length === 0) {
         throw new Error('Nenhuma publicação encontrada para este perfil.');
       }
