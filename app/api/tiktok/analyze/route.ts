@@ -14,7 +14,7 @@ export async function POST(req: Request) {
     if (process.env.BACKEND_API_URL && !process.env.BACKEND_API_URL.includes('127.0.0.1') && !process.env.BACKEND_API_URL.includes('localhost')) {
       try {
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 3500);
+        const timeoutId = setTimeout(() => controller.abort(), 25000);
 
         const fastApiRes = await fetch(`${process.env.BACKEND_API_URL}/api/tiktok/analyze`, {
           method: 'POST',
