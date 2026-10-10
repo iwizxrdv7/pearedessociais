@@ -304,7 +304,11 @@ export async function scrapeInstagramProfile(inputUrl: string, maxItems: number 
 
   const feedPostsCount = posts.filter((p) => p.type !== 'avatar').length;
   if (feedPostsCount === 0 && !avatarUrl) {
-    throw new Error(`Nenhuma publicação pública foi retornada para o perfil @${username}.`);
+    const titleMatch = html.match(/<title>([\s\S]*?)<\/title>/i);
+    const bodySnippet = html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 200);
+    throw new Error(
+      `Instagram retornou página (Len: ${html.length}, Title: "${titleMatch ? titleMatch[1] : 'sem título'}"). Conteúdo: "${bodySnippet}".`
+    );
   }
 
   return {
