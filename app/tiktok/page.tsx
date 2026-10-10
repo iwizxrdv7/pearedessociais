@@ -10,14 +10,14 @@ import {
   ShieldCheck,
   Eye,
   Heart,
-  Calendar,
   CheckCircle2,
   AlertCircle,
-  Clock,
-  Layers,
   ExternalLink,
-  PlusCircle
+  CheckSquare,
+  Square,
+  Loader2
 } from 'lucide-react';
+import { downloadCleanSingleMedia, downloadCleanBatchZip } from '@/lib/media_downloader';
 
 interface TikTokVideo {
   id: string;
@@ -51,6 +51,11 @@ export default function TikTokDownloaderPage() {
   const [error, setError] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
+  // Estados de download
+  const [downloadingZip, setDownloadingZip] = useState(false);
+  const [zipProgress, setZipProgress] = useState(0);
+  const [downloadingSingleId, setDownloadingSingleId] = useState<string | null>(null);
+
   const handleAnalyze = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!query.trim()) return;
@@ -71,8 +76,15 @@ export default function TikTokDownloaderPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Erro ao analisar perfil.');
 
-      setProfile(data.data.user_info);
+      if (data.data?.user_info) {
+        setProfile(data.data.user_info);
+      }
+
       const fetchedVideos: TikTokVideo[] = data.data.videos || [];
+      if (fetchedVideos.length === 0) {
+        throw new Error('Nenhum vídeo encontrado para este perfil do TikTok.');
+      }
+
       setVideos(fetchedVideos);
       setSelectedIds(new Set(fetchedVideos.map((v) => v.id)));
       setSuccessMsg(`Encontrados ${fetchedVideos.length} vídeos públicos sem marca d'água!`);
@@ -98,6 +110,44 @@ export default function TikTokDownloaderPage() {
     setSelectedIds(next);
   };
 
+  const handleDownloadSingle = async (vid: TikTokVideo) => {
+    try {
+      setDownloadingSingleId(vid.id);
+      const mediaUrl = vid.direct_video_url || vid.thumbnail;
+      const safeTitle = (vid.title || `tiktok_${vid.id}`).slice(0, 30);
+      await downloadCleanSingleMedia(mediaUrl, safeTitle, true);
+    } catch (err: any) {
+      alert(`Erro ao baixar vídeo: ${err.message}`);
+    } finally {
+      setDownloadingSingleId(null);
+    }
+  };
+
+  const handleDownloadBatch = async () => {
+    const selectedVideos = videos.filter((v) => selectedIds.has(v.id));
+    if (selectedVideos.length === 0) return;
+
+    try {
+      setDownloadingZip(true);
+      setZipProgress(0);
+
+      const items = selectedVideos.map((v) => ({
+        id: v.id,
+        url: v.direct_video_url || v.thumbnail,
+        title: v.title,
+        isVideo: true,
+      }));
+
+      await downloadCleanBatchZip(items, profile?.username || 'tiktok', (pct) => {
+        setZipProgress(pct);
+      });
+    } catch (err: any) {
+      alert(`Erro ao gerar ZIP de vídeos: ${err.message}`);
+    } finally {
+      setDownloadingZip(false);
+    }
+  };
+
   return (
     <main className="min-h-screen bg-[#0B0F19] pb-16">
       <Header />
@@ -111,7 +161,7 @@ export default function TikTokDownloaderPage() {
           </div>
           <h1 className="text-2xl font-extrabold text-white">Baixar Perfil Completo (TikTok)</h1>
           <p className="text-xs text-gray-400 mt-1">
-            Faça download em massa de vídeos sem marca d'água inserindo o link do perfil ou @usuario.
+            Faça download em massa de vídeos sem marca d'água com purificação de metadados integrada.
           </p>
         </div>
 
@@ -173,50 +223,63 @@ export default function TikTokDownloaderPage() {
         </div>
 
         {/* Profile Card & Videos Grid */}
-        {profile && (
+        {videos.length > 0 && (
           <div className="space-y-6">
             {/* Profile Header */}
             <div className="bg-gray-900 border border-gray-800 rounded-3xl p-6 shadow-xl flex flex-col md:flex-row items-center justify-between gap-6">
               <div className="flex items-center gap-4">
                 <img
-                  src={profile.avatar || 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=120&h=120&fit=crop'}
-                  alt={profile.nickname}
+                  src={profile?.avatar || videos[0]?.thumbnail || 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=120&h=120&fit=crop'}
+                  alt={profile?.nickname || 'Perfil'}
                   className="w-16 h-16 rounded-full object-cover ring-2 ring-indigo-500/40"
                 />
                 <div>
                   <h2 className="text-lg font-bold text-white flex items-center gap-2">
-                    {profile.nickname}
-                    <span className="text-xs text-gray-400 font-normal">@{profile.username}</span>
+                    {profile?.nickname || profile?.username || 'Perfil TikTok'}
+                    <span className="text-xs text-gray-400 font-normal">@{profile?.username || query}</span>
                   </h2>
-                  <p className="text-xs text-gray-300 mt-1 max-w-lg line-clamp-2">{profile.signature || 'Sem bio informada'}</p>
+                  <p className="text-xs text-gray-300 mt-1 max-w-lg line-clamp-2">
+                    {profile?.signature || 'Vídeos públicos sem marca d’água disponíveis para download'}
+                  </p>
                   <div className="flex items-center gap-4 mt-2 text-xs text-gray-400">
                     <span>
-                      <strong className="text-white">{profile.follower_count?.toLocaleString() || 0}</strong> seguidores
+                      <strong className="text-white">{videos.length}</strong> vídeos carregados
                     </span>
                     <span>•</span>
-                    <span>
-                      <strong className="text-white">{videos.length}</strong> vídeos carregados
+                    <span className="text-indigo-400 font-semibold">
+                      {selectedIds.size} selecionados
                     </span>
                   </div>
                 </div>
               </div>
 
               {/* Action Buttons */}
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3 w-full md:w-auto">
                 <button
                   onClick={toggleSelectAll}
-                  className="py-2.5 px-4 bg-gray-800 hover:bg-gray-700 text-gray-200 text-xs font-semibold rounded-xl border border-gray-700 transition"
+                  className="py-2.5 px-4 bg-gray-800 hover:bg-gray-700 text-gray-200 text-xs font-semibold rounded-xl border border-gray-700 transition flex items-center gap-2"
                 >
+                  {selectedIds.size === videos.length ? <Square className="w-3.5 h-3.5" /> : <CheckSquare className="w-3.5 h-3.5" />}
                   {selectedIds.size === videos.length ? 'Desmarcar Todos' : 'Selecionar Todos'}
                 </button>
-                <a
-                  href={`http://127.0.0.1:8000/api/tiktok/analyze`}
-                  target="_blank"
-                  className="py-2.5 px-5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs rounded-xl shadow-lg shadow-emerald-600/20 transition flex items-center gap-2"
+
+                <button
+                  onClick={handleDownloadBatch}
+                  disabled={downloadingZip || selectedIds.size === 0}
+                  className="py-2.5 px-5 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-bold text-xs rounded-xl shadow-lg shadow-indigo-600/30 transition flex items-center gap-2 disabled:opacity-50"
                 >
-                  <Download className="w-4 h-4" />
-                  Baixar Selecionados ({selectedIds.size})
-                </a>
+                  {downloadingZip ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>Gerando ZIP ({zipProgress}%)...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Download className="w-4 h-4" />
+                      <span>Baixar Selecionados ({selectedIds.size})</span>
+                    </>
+                  )}
+                </button>
               </div>
             </div>
 
@@ -224,6 +287,8 @@ export default function TikTokDownloaderPage() {
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
               {videos.map((vid) => {
                 const isSelected = selectedIds.has(vid.id);
+                const isDownloadingThis = downloadingSingleId === vid.id;
+
                 return (
                   <div
                     key={vid.id}
@@ -240,16 +305,16 @@ export default function TikTokDownloaderPage() {
                         alt={vid.title}
                         className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
                       />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent"></div>
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-transparent to-transparent"></div>
 
                       {/* Selection Badge */}
                       <div className="absolute top-2.5 right-2.5">
                         <div
-                          className={`w-5 h-5 rounded-full flex items-center justify-center transition ${
-                            isSelected ? 'bg-indigo-600 text-white shadow-md' : 'bg-black/60 border border-white/40'
+                          className={`w-6 h-6 rounded-full flex items-center justify-center transition shadow-md ${
+                            isSelected ? 'bg-indigo-600 text-white' : 'bg-black/60 border border-white/40'
                           }`}
                         >
-                          {isSelected && <CheckCircle2 className="w-3.5 h-3.5" />}
+                          {isSelected && <CheckCircle2 className="w-4 h-4" />}
                         </div>
                       </div>
 
@@ -257,34 +322,57 @@ export default function TikTokDownloaderPage() {
                       <div className="absolute bottom-2.5 left-2.5 right-2.5 flex items-center justify-between text-[11px] text-white font-medium">
                         <span className="flex items-center gap-1 bg-black/60 backdrop-blur-sm px-2 py-0.5 rounded-full">
                           <Eye className="w-3 h-3 text-indigo-400" />
-                          {vid.view_count?.toLocaleString() || '—'}
+                          {vid.view_count ? vid.view_count.toLocaleString() : '—'}
                         </span>
                         {vid.like_count ? (
                           <span className="flex items-center gap-1 bg-black/60 backdrop-blur-sm px-2 py-0.5 rounded-full">
                             <Heart className="w-3 h-3 text-pink-400" />
-                            {vid.like_count?.toLocaleString()}
+                            {vid.like_count.toLocaleString()}
                           </span>
                         ) : null}
                       </div>
                     </div>
 
-                    <div className="p-3">
+                    <div className="p-3.5 space-y-2">
                       <p className="text-xs text-gray-200 line-clamp-2 font-medium leading-relaxed">
                         {vid.title || 'Vídeo sem legenda'}
                       </p>
-                      <div className="mt-2.5 pt-2 border-t border-gray-800 flex items-center justify-between text-[10px] text-gray-400">
-                        <span className="font-mono">{vid.id}</span>
-                        {vid.direct_video_url && (
-                          <a
-                            href={vid.direct_video_url}
-                            target="_blank"
-                            onClick={(e) => e.stopPropagation()}
-                            className="text-indigo-400 hover:text-indigo-300 flex items-center gap-1 font-semibold"
+
+                      <div className="pt-2 border-t border-gray-800/80 flex items-center justify-between text-[11px]">
+                        <span className="font-mono text-gray-400 text-[10px] truncate max-w-[80px]">
+                          {vid.id}
+                        </span>
+
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDownloadSingle(vid);
+                            }}
+                            disabled={isDownloadingThis}
+                            className="text-indigo-400 hover:text-indigo-300 bg-indigo-500/10 hover:bg-indigo-500/20 px-2.5 py-1 rounded-lg text-[10px] font-bold flex items-center gap-1 transition"
                           >
-                            <ExternalLink className="w-3 h-3" />
-                            Abrir
-                          </a>
-                        )}
+                            {isDownloadingThis ? (
+                              <Loader2 className="w-3 h-3 animate-spin" />
+                            ) : (
+                              <Download className="w-3 h-3" />
+                            )}
+                            Baixar Limpo
+                          </button>
+
+                          {vid.url && (
+                            <a
+                              href={vid.url}
+                              target="_blank"
+                              rel="noreferrer"
+                              onClick={(e) => e.stopPropagation()}
+                              className="text-gray-400 hover:text-white p-1"
+                              title="Abrir no TikTok"
+                            >
+                              <ExternalLink className="w-3.5 h-3.5" />
+                            </a>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </div>
