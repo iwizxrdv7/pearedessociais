@@ -20,7 +20,8 @@ import {
   Check,
   ArrowUpDown,
   Layers,
-  Sparkle
+  Sparkle,
+  User,
 } from 'lucide-react';
 import { downloadCleanSingleMedia, downloadCleanBatchZip } from '@/lib/media_downloader';
 import { fetchInstagramProfile, ScrapedHighlight } from '@/lib/scraper_client';
@@ -122,13 +123,14 @@ export default function InstagramDownloaderPage() {
 
   // Contadores por categoria
   const counts = useMemo(() => {
-    const feedPosts = posts.filter((p) => p.type !== 'avatar');
     const photos = posts.filter((p) => p.type === 'photo');
     const reels = posts.filter((p) => p.type === 'reel');
+    const avatar = posts.find((p) => p.type === 'avatar');
     return {
-      all: feedPosts.length,
+      all: posts.length,
       photos: photos.length,
       reels: reels.length,
+      avatar: avatar ? 1 : 0,
       highlights: highlights.length,
     };
   }, [posts, highlights]);
@@ -137,13 +139,16 @@ export default function InstagramDownloaderPage() {
   const displayedPosts = useMemo(() => {
     let filtered = posts.filter((p) => {
       if (activeTab === 'all') {
-        return p.type !== 'avatar';
+        return true; // Exibe tudo incluindo posts, reels, destaques e foto de perfil HD
       }
       if (activeTab === 'photos') {
         return p.type === 'photo';
       }
       if (activeTab === 'reels') {
         return p.type === 'reel';
+      }
+      if (activeTab === 'avatar') {
+        return p.type === 'avatar';
       }
       if (activeTab.startsWith('highlight_')) {
         const hlId = activeTab.replace('highlight_', '');
@@ -353,15 +358,25 @@ export default function InstagramDownloaderPage() {
             <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
               {/* Avatar + Nick + Stats */}
               <div className="flex items-center gap-4">
-                <div className="relative">
+                <div
+                  onClick={() => {
+                    const avatarPost = posts.find((p) => p.type === 'avatar');
+                    if (avatarPost) handleDownloadSingle(avatarPost);
+                  }}
+                  className="relative group/avatar cursor-pointer"
+                  title="Clique para baixar a Foto de Perfil HD (1080x1080)"
+                >
                   <img
                     src={profile.avatar || posts[0]?.thumbnail || 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=120&h=120&fit=crop'}
                     alt={profile.nickname || 'Perfil'}
-                    className="w-16 h-16 rounded-full object-cover ring-2 ring-pink-500/50 shadow-md"
+                    className="w-16 h-16 rounded-full object-cover ring-2 ring-pink-500/50 group-hover/avatar:ring-pink-400 transition shadow-md"
                   />
-                  <span className="absolute -bottom-1 -right-1 bg-pink-600 text-[10px] font-bold px-1.5 py-0.5 rounded-full text-white border border-gray-900">
+                  <span className="absolute -bottom-1 -right-1 bg-pink-600 text-[10px] font-bold px-1.5 py-0.5 rounded-full text-white border border-gray-900 group-hover/avatar:bg-pink-500 transition">
                     HD
                   </span>
+                  <div className="absolute inset-0 bg-black/40 rounded-full opacity-0 group-hover/avatar:opacity-100 flex items-center justify-center transition">
+                    <Download className="w-5 h-5 text-white drop-shadow" />
+                  </div>
                 </div>
 
                 <div>
@@ -512,7 +527,29 @@ export default function InstagramDownloaderPage() {
                   </span>
                 </button>
 
-                {/* 4. Destaques dinâmicos com Capa Fixada e Contador de Stories */}
+                {/* 4. Foto de Perfil (HD) */}
+                {counts.avatar > 0 && (
+                  <button
+                    onClick={() => setActiveTab('avatar')}
+                    className={`px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 whitespace-nowrap flex-shrink-0 ${
+                      activeTab === 'avatar'
+                        ? 'bg-pink-600 text-white shadow-lg shadow-pink-600/30'
+                        : 'bg-gray-900 text-gray-400 hover:text-white hover:bg-gray-800 border border-gray-800'
+                    }`}
+                  >
+                    <User className="w-3.5 h-3.5 text-purple-400" />
+                    <span>Foto de Perfil (HD)</span>
+                    <span
+                      className={`text-[10px] px-1.5 py-0.5 rounded-full ${
+                        activeTab === 'avatar' ? 'bg-pink-800 text-white' : 'bg-gray-800 text-gray-400'
+                      }`}
+                    >
+                      {counts.avatar}
+                    </span>
+                  </button>
+                )}
+
+                {/* 5. Destaques dinâmicos com Capa Fixada e Contador de Stories */}
                 {highlights.map((hl) => {
                   const isActive = activeTab === hl.id || activeTab === `highlight_${hl.highlight_id}`;
                   const hlStoriesCount =
@@ -629,6 +666,8 @@ export default function InstagramDownloaderPage() {
                           <Film className="w-3.5 h-3.5 text-pink-400" />
                         ) : post.type === 'highlight' ? (
                           <Sparkle className="w-3.5 h-3.5 text-amber-400" />
+                        ) : post.type === 'avatar' ? (
+                          <User className="w-3.5 h-3.5 text-purple-400" />
                         ) : (
                           <ImageIcon className="w-3.5 h-3.5 text-cyan-400" />
                         )}
@@ -652,7 +691,7 @@ export default function InstagramDownloaderPage() {
 
                       <div className="pt-2 border-t border-gray-800/80 flex items-center justify-between text-[11px]">
                         <span className="font-mono text-gray-400 text-[10px] truncate max-w-[80px]">
-                          {post.id}
+                          {post.type === 'avatar' ? 'Avatar HD' : post.id}
                         </span>
 
                         <div className="flex items-center gap-2">

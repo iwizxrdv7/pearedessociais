@@ -32,9 +32,11 @@ export async function POST(req: Request) {
 
           const formattedPosts = rawPosts.map((p: any) => ({
             id: p.id,
-            url: p.play_url?.startsWith('http') && !p.play_url.includes('.mp4') && !p.play_url.includes('.jpg')
-              ? p.play_url
-              : `https://www.instagram.com/p/${p.id}/`,
+            url: p.type === 'avatar'
+              ? (p.play_url || p.cover || '')
+              : (p.play_url?.startsWith('http') && !p.play_url.includes('.mp4') && !p.play_url.includes('.jpg')
+                  ? p.play_url
+                  : `https://www.instagram.com/p/${p.id}/`),
             thumbnail: p.cover || p.thumbnail || '',
             caption: p.title || p.caption || 'Sem legenda',
             is_video: p.is_video ?? (p.type === 'reel' || (p.play_url && p.play_url.includes('.mp4'))),
@@ -48,6 +50,24 @@ export async function POST(req: Request) {
             highlight_name: p.highlight_name,
             story_index: p.story_index,
           }));
+
+          // Garantir que a Foto de Perfil HD está incluída na lista de mídias para exibição e download
+          const avatarUrl = rawUser.avatar || '';
+          if (avatarUrl && !formattedPosts.some((p: any) => p.type === 'avatar' || p.id === 'avatar_profile')) {
+            formattedPosts.push({
+              id: 'avatar_profile',
+              url: avatarUrl,
+              thumbnail: avatarUrl,
+              caption: `Foto de Perfil HD (1080x1080) - @${rawUser.username || username}`,
+              is_video: false,
+              like_count: 0,
+              comment_count: 0,
+              view_count: 0,
+              save_count: 0,
+              direct_media_url: avatarUrl,
+              type: 'avatar',
+            });
+          }
 
           return NextResponse.json({
             status: 'success',
