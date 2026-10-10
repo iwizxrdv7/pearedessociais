@@ -382,7 +382,15 @@ export default function InstagramDownloaderPage() {
                   <img
                     src={profile.avatar || posts[0]?.thumbnail || 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=120&h=120&fit=crop'}
                     alt={profile.nickname || 'Perfil'}
+                    referrerPolicy="no-referrer"
+                    crossOrigin="anonymous"
                     className="w-16 h-16 rounded-full object-cover ring-2 ring-pink-500/50 group-hover/avatar:ring-pink-400 transition shadow-md"
+                    onError={(e) => {
+                      const el = e.currentTarget;
+                      if (!el.src.includes('unsplash')) {
+                        el.src = 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=120&h=120&fit=crop';
+                      }
+                    }}
                   />
                   <span className="absolute -bottom-1 -right-1 bg-pink-600 text-[10px] font-bold px-1.5 py-0.5 rounded-full text-white border border-gray-900 group-hover/avatar:bg-pink-500 transition">
                     HD
@@ -589,7 +597,15 @@ export default function InstagramDownloaderPage() {
                       <img
                         src={hl.cover || profile?.avatar || 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=80&h=80&fit=crop'}
                         alt={hl.title}
+                        referrerPolicy="no-referrer"
+                        crossOrigin="anonymous"
                         className="w-5 h-5 rounded-full object-cover ring-1 ring-pink-400/80 flex-shrink-0"
+                        onError={(e) => {
+                          const el = e.currentTarget;
+                          if (!el.src.includes('unsplash')) {
+                            el.src = 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=80&h=80&fit=crop';
+                          }
+                        }}
                       />
                       <span>Destaque: {hl.title}</span>
                       <span
@@ -672,7 +688,15 @@ export default function InstagramDownloaderPage() {
                       <img
                         src={post.thumbnail || 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=400&h=400&fit=crop'}
                         alt={post.caption}
+                        referrerPolicy="no-referrer"
+                        crossOrigin="anonymous"
                         className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
+                        onError={(e) => {
+                          const el = e.currentTarget;
+                          if (!el.src.includes('unsplash')) {
+                            el.src = 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=400&h=400&fit=crop';
+                          }
+                        }}
                       />
                       <div className="absolute top-2 left-2 bg-black/70 backdrop-blur-sm p-1.5 rounded-lg text-white">
                         {post.is_video ? (

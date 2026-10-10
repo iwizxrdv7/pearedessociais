@@ -34,10 +34,19 @@ export async function convertToCleanHd1080Image(imageBytes: Uint8Array): Promise
     const blob = new Blob([imageBytes as any], { type: 'image/jpeg' });
     const blobUrl = URL.createObjectURL(blob);
     const img = new Image();
-    img.crossOrigin = 'anonymous';
 
     img.onload = () => {
       try {
+        const nw = img.naturalWidth || 150;
+        const nh = img.naturalHeight || 150;
+
+        // Se a imagem já foi gerada em 1080x1080 HD pelo backend, preserva fidelidade absoluta
+        if (nw === 1080 && nh === 1080) {
+          URL.revokeObjectURL(blobUrl);
+          resolve(cleanJpegBytes(imageBytes).cleaned);
+          return;
+        }
+
         const canvas = document.createElement('canvas');
         canvas.width = 1080;
         canvas.height = 1080;
@@ -51,11 +60,7 @@ export async function convertToCleanHd1080Image(imageBytes: Uint8Array): Promise
         ctx.imageSmoothingEnabled = true;
         ctx.imageSmoothingQuality = 'high';
 
-        const nw = img.naturalWidth || 150;
-        const nh = img.naturalHeight || 150;
-
-        // Super-Resolução Progressiva: Upscaling em múltiplos passos com interpolação suave
-        // Evita a pixelização/quadriculado de saltos diretos em Canvas
+        // Upscaling progressivo suave em passos de 1.5x para evitar pixelização
         let currentCanvas: HTMLCanvasElement = document.createElement('canvas');
         currentCanvas.width = nw;
         currentCanvas.height = nh;
@@ -84,41 +89,10 @@ export async function convertToCleanHd1080Image(imageBytes: Uint8Array): Promise
           curH = nextH;
         }
 
-        // Fundo neutro e centralização perfeita
+        // Renderiza fundo neutro e centraliza a imagem interpolada em alta resolução
         ctx.fillStyle = '#FFFFFF';
         ctx.fillRect(0, 0, 1080, 1080);
         ctx.drawImage(currentCanvas, 0, 0, 1080, 1080);
-
-        // Restauração de Nitidez Avançada: Unsharp Mask Convolution (3x3 Laplacian)
-        // Elimina o aspecto embaçado e restaura bordas de alta frequência (rosto, cabelo, texto)
-        try {
-          const imgData = ctx.getImageData(0, 0, 1080, 1080);
-          const pixels = imgData.data;
-          const copy = new Uint8ClampedArray(pixels);
-          const w = 1080;
-          const h = 1080;
-          const amount = 0.25; // Peso calibrado de nitidez cristalina sem ruído
-
-          for (let y = 1; y < h - 1; y++) {
-            const rowOffset = y * w;
-            for (let x = 1; x < w - 1; x++) {
-              const idx = (rowOffset + x) * 4;
-              for (let c = 0; c < 3; c++) {
-                const center = copy[idx + c];
-                const up = copy[((y - 1) * w + x) * 4 + c];
-                const down = copy[((y + 1) * w + x) * 4 + c];
-                const left = copy[(rowOffset + x - 1) * 4 + c];
-                const right = copy[(rowOffset + x + 1) * 4 + c];
-                const laplacian = 4 * center - up - down - left - right;
-                const sharpened = center + amount * laplacian;
-                pixels[idx + c] = sharpened < 0 ? 0 : sharpened > 255 ? 255 : sharpened;
-              }
-            }
-          }
-          ctx.putImageData(imgData, 0, 0);
-        } catch {
-          // Se houver restrição de segurança no context, prossegue com a imagem interpolada
-        }
 
         canvas.toBlob(
           async (exportBlob) => {

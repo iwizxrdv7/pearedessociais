@@ -146,42 +146,31 @@ def clean_media(input_path: str, output_path: str, make_brand_new: bool = True, 
                 clean_img.paste(img)
                 if target_size and clean_img.size != target_size:
                     orig_w, orig_h = clean_img.size
-                    if orig_w >= target_size[0] and orig_h >= target_size[1]:
+                    target_w, target_h = target_size
+                    if orig_w >= target_w and orig_h >= target_h:
                         clean_img = clean_img.resize(target_size, Image.Resampling.LANCZOS)
                     else:
-                        # Super-Resolução e Restauração de Nitidez Avançada via OpenCV & Pillow
-                        try:
-                            import cv2
-                            import numpy as np
-                            from PIL import ImageEnhance
-
-                            img_cv = cv2.cvtColor(np.array(clean_img), cv2.COLOR_RGB2BGR)
-                            denoised = cv2.bilateralFilter(img_cv, d=5, sigmaColor=30, sigmaSpace=30)
-                            inter_sz = (int(orig_w * 2), int(orig_h * 2))
-                            step1 = cv2.resize(denoised, inter_sz, interpolation=cv2.INTER_CUBIC)
-                            step2 = cv2.resize(step1, target_size, interpolation=cv2.INTER_LANCZOS4)
-
-                            # Unsharp Masking no espaço de cores LAB (apenas na luminância)
-                            lab = cv2.cvtColor(step2, cv2.COLOR_BGR2LAB)
-                            l_channel, a_channel, b_channel = cv2.split(lab)
-                            clahe = cv2.createCLAHE(clipLimit=1.2, tileGridSize=(8, 8))
-                            l_clahe = clahe.apply(l_channel)
-                            gaussian = cv2.GaussianBlur(l_clahe, (0, 0), sigmaX=1.5)
-                            unsharp = cv2.addWeighted(l_clahe, 1.5, gaussian, -0.5, 0)
-
-                            enhanced_bgr = cv2.cvtColor(cv2.merge([unsharp, a_channel, b_channel]), cv2.COLOR_LAB2BGR)
-                            enhanced_pil = Image.fromarray(cv2.cvtColor(enhanced_bgr, cv2.COLOR_BGR2RGB))
-                            
-                            # Realce de micro-detalhes
-                            enh_sharp = ImageEnhance.Sharpness(enhanced_pil)
-                            clean_img = enh_sharp.enhance(1.2)
-                        except Exception:
-                            clean_img = clean_img.resize(target_size, Image.Resampling.LANCZOS)
+                        # Super-Resolução Progressiva em múltiplos passos com interpolação Lanczos
+                        from PIL import ImageFilter, ImageEnhance
+                        cur_w, cur_h = orig_w, orig_h
+                        step_img = clean_img
+                        while cur_w < target_w or cur_h < target_h:
+                            next_w = min(target_w, int(cur_w * 1.5))
+                            next_h = min(target_h, int(cur_h * 1.5))
+                            step_img = step_img.resize((next_w, next_h), Image.Resampling.LANCZOS)
+                            cur_w, cur_h = next_w, next_h
+                        
+                        # Restauração e Realce de Nitidez Cristalina (Unsharp Mask)
+                        sharp_img = step_img.filter(ImageFilter.UnsharpMask(radius=2, percent=140, threshold=2))
+                        clean_img = ImageEnhance.Sharpness(sharp_img).enhance(1.15)
 
                 save_format = "JPEG" if ext in [".jpg", ".jpeg"] else "PNG" if ext in [".png"] else img.format or "JPEG"
 
-            # Salvar sem carregar exif anterior com qualidade máxima 100%
-            clean_img.save(str(out_p), format=save_format, quality=100)
+            # Salvar sem carregar exif anterior com qualidade máxima sem subsampling para nitidez total
+            if save_format == "JPEG":
+                clean_img.save(str(out_p), format="JPEG", quality=95, subsampling=0)
+            else:
+                clean_img.save(str(out_p), format=save_format, quality=100)
 
     elif is_video:
         ffmpeg_bin = get_ffmpeg_path()
