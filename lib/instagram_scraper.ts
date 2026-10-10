@@ -150,6 +150,7 @@ export async function scrapeInstagramProfile(inputUrl: string, maxItems: number 
   ];
 
   let html = '';
+  let lastError: any = null;
   let debugInfo: string[] = [];
 
   for (const ua of crawlerUserAgents) {
