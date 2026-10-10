@@ -74,13 +74,14 @@ export default function InstagramDownloaderPage() {
       }
 
       const fetchedPosts: InstagramPost[] = (data.posts || []) as any;
-      if (fetchedPosts.length === 0) {
+      const finalPosts = Number(maxPosts) > 0 ? fetchedPosts.slice(0, Number(maxPosts)) : fetchedPosts;
+      if (finalPosts.length === 0) {
         throw new Error('Nenhuma publicação encontrada para este perfil.');
       }
 
-      setPosts(fetchedPosts);
-      setSelectedIds(new Set(fetchedPosts.map((p) => p.id)));
-      setSuccessMsg(`Encontrados ${fetchedPosts.length} posts/reels de alta qualidade!`);
+      setPosts(finalPosts);
+      setSelectedIds(new Set(finalPosts.map((p) => p.id)));
+      setSuccessMsg(`Encontrados ${finalPosts.length} posts/reels de alta qualidade!`);
     } catch (err: any) {
       setError(err.message);
     } finally {

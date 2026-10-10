@@ -75,13 +75,14 @@ export default function TikTokDownloaderPage() {
       }
 
       const fetchedVideos: TikTokVideo[] = (data.videos || []) as any;
-      if (fetchedVideos.length === 0) {
+      const finalVideos = Number(maxVideos) > 0 ? fetchedVideos.slice(0, Number(maxVideos)) : fetchedVideos;
+      if (finalVideos.length === 0) {
         throw new Error('Nenhum vídeo encontrado para este perfil do TikTok.');
       }
 
-      setVideos(fetchedVideos);
-      setSelectedIds(new Set(fetchedVideos.map((v) => v.id)));
-      setSuccessMsg(`Encontrados ${fetchedVideos.length} vídeos públicos sem marca d'água!`);
+      setVideos(finalVideos);
+      setSelectedIds(new Set(finalVideos.map((v) => v.id)));
+      setSuccessMsg(`Encontrados ${finalVideos.length} vídeos públicos sem marca d'água!`);
     } catch (err: any) {
       setError(err.message);
     } finally {
