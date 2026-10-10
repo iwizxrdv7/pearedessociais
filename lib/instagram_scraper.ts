@@ -123,10 +123,18 @@ function fetchInstagramChrome(username: string): Promise<string> {
     const req = https.request(options, (res) => {
       let data = '';
       res.on('data', (chunk) => (data += chunk));
-      res.on('end', () => resolve(data));
+      res.on('end', () => {
+        if (res.statusCode && res.statusCode >= 400) {
+          reject(new Error(`Instagram HTTP ${res.statusCode} (Len: ${data.length}, Body: ${data.slice(0, 150)})`));
+        } else {
+          resolve(data);
+        }
+      });
     });
 
-    req.on('error', reject);
+    req.on('error', (err) => {
+      reject(new Error(`Erro de conexão HTTPS: ${err.message}`));
+    });
     req.end();
   });
 }
@@ -196,9 +204,15 @@ export async function scrapeInstagramProfile(
   }
 
   // 2. Extração de Perfil com Emulação TLS Chrome
-  const html = await fetchInstagramChrome(username);
+  let html = '';
+  try {
+    html = await fetchInstagramChrome(username);
+  } catch (err: any) {
+    throw new Error(`Falha no motor Chrome Vercel: ${err.message}`);
+  }
+
   if (!html || html.length < 1000) {
-    throw new Error(`Não foi possível carregar o perfil público @${username}.`);
+    throw new Error(`Instagram retornou resposta muito curta (Len: ${html?.length || 0}).`);
   }
 
   // 3. Parser estruturado dos scripts JSON
