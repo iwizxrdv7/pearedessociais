@@ -4,6 +4,14 @@
  * with automatic fallback to Next.js API routes & public oEmbed resolvers.
  */
 
+export interface ScrapedHighlight {
+  id: string;
+  highlight_id?: string;
+  title: string;
+  cover: string;
+  url: string;
+}
+
 export interface ScrapedPost {
   id: string;
   url: string;
@@ -12,8 +20,12 @@ export interface ScrapedPost {
   is_video: boolean;
   like_count?: number;
   comment_count?: number;
+  view_count?: number;
+  save_count?: number;
+  order_index?: number;
   direct_media_url?: string;
   type?: string;
+  highlight_name?: string;
 }
 
 export interface ScrapedVideo {
@@ -36,10 +48,12 @@ export interface ProfileResult {
     avatar?: string;
     signature?: string;
     follower_count?: number;
+    following_count?: number;
     video_count?: number;
     post_count?: number;
   };
   posts?: ScrapedPost[];
+  highlights?: ScrapedHighlight[];
   videos?: ScrapedVideo[];
 }
 
@@ -63,6 +77,7 @@ export async function fetchInstagramProfile(query: string, maxItems: number = 0)
       const data = await localRes.json();
       const rawPosts = data.data?.posts || data.data?.videos || [];
       const rawUser = data.data?.user || data.data?.user_info || {};
+      const rawHighlights: ScrapedHighlight[] = data.data?.highlights || [];
 
       if (rawPosts.length > 0) {
         const limitedPosts = maxItems > 0 ? rawPosts.slice(0, maxItems) : rawPosts;
@@ -71,11 +86,13 @@ export async function fetchInstagramProfile(query: string, maxItems: number = 0)
             username: rawUser.username || cleanQuery,
             nickname: rawUser.nickname || rawUser.username || cleanQuery,
             avatar: rawUser.avatar || limitedPosts[0]?.cover || limitedPosts[0]?.thumbnail || '',
-            signature: rawUser.signature || 'Perfil verificado via Playwright Local',
+            signature: rawUser.signature || 'Perfil do Instagram',
             follower_count: Number(rawUser.followers_count) || 0,
+            following_count: Number(rawUser.following_count) || 0,
             video_count: limitedPosts.length,
           },
-          posts: limitedPosts.map((p: any) => ({
+          highlights: rawHighlights,
+          posts: limitedPosts.map((p: any, idx: number) => ({
             id: p.id,
             url: p.play_url?.startsWith('http') && !p.play_url.includes('.mp4') && !p.play_url.includes('.jpg')
               ? p.play_url
@@ -85,8 +102,12 @@ export async function fetchInstagramProfile(query: string, maxItems: number = 0)
             is_video: p.is_video ?? (p.type === 'reel' || (p.play_url && p.play_url.includes('.mp4'))),
             like_count: p.like_count || 0,
             comment_count: p.comment_count || 0,
+            view_count: p.view_count || 0,
+            save_count: p.save_count || 0,
+            order_index: p.order_index ?? idx + 1,
             direct_media_url: p.play_url || p.cover || '',
-            type: p.type || (p.is_video ? 'reel' : 'post'),
+            type: p.type || (p.is_video ? 'reel' : 'photo'),
+            highlight_name: p.highlight_name,
           })),
         };
       }
@@ -109,6 +130,7 @@ export async function fetchInstagramProfile(query: string, maxItems: number = 0)
 
   const posts = data.data?.posts || data.data?.videos || [];
   const rawUser = data.data?.user || data.data?.user_info || {};
+  const rawHighlights: ScrapedHighlight[] = data.data?.highlights || [];
 
   if (posts.length === 0) {
     if (cleanQuery.includes('/p/') || cleanQuery.includes('/reel/')) {
@@ -144,9 +166,11 @@ export async function fetchInstagramProfile(query: string, maxItems: number = 0)
       avatar: rawUser.avatar || limitedPosts[0]?.thumbnail || '',
       signature: rawUser.signature || 'Perfil Instagram',
       follower_count: Number(rawUser.follower_count || rawUser.followers_count) || 0,
+      following_count: Number(rawUser.following_count) || 0,
       video_count: limitedPosts.length,
     },
-    posts: limitedPosts.map((p: any) => ({
+    highlights: rawHighlights,
+    posts: limitedPosts.map((p: any, idx: number) => ({
       id: p.id,
       url: p.url || p.play_url || `https://www.instagram.com/p/${p.id}/`,
       thumbnail: p.thumbnail || p.cover || '',
@@ -154,8 +178,12 @@ export async function fetchInstagramProfile(query: string, maxItems: number = 0)
       is_video: p.is_video ?? true,
       like_count: p.like_count || 0,
       comment_count: p.comment_count || 0,
+      view_count: p.view_count || 0,
+      save_count: p.save_count || 0,
+      order_index: p.order_index ?? idx + 1,
       direct_media_url: p.direct_media_url || p.play_url || '',
       type: p.type || 'reel',
+      highlight_name: p.highlight_name,
     })),
   };
 }

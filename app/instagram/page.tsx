@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Header } from '@/components/Header';
 import {
   Instagram,
@@ -15,10 +15,15 @@ import {
   Image as ImageIcon,
   CheckSquare,
   Square,
-  Loader2
+  Loader2,
+  Copy,
+  Check,
+  ArrowUpDown,
+  Layers,
+  Sparkle
 } from 'lucide-react';
 import { downloadCleanSingleMedia, downloadCleanBatchZip } from '@/lib/media_downloader';
-import { fetchInstagramProfile } from '@/lib/scraper_client';
+import { fetchInstagramProfile, ScrapedHighlight } from '@/lib/scraper_client';
 
 interface InstagramPost {
   id: string;
@@ -28,8 +33,12 @@ interface InstagramPost {
   is_video: boolean;
   like_count?: number;
   comment_count?: number;
+  view_count?: number;
+  save_count?: number;
+  order_index?: number;
   direct_media_url?: string;
   type?: string;
+  highlight_name?: string;
 }
 
 interface ProfileInfo {
@@ -37,8 +46,10 @@ interface ProfileInfo {
   nickname: string;
   avatar: string;
   signature: string;
-  follower_count: number;
+  follower_count: number | string;
+  following_count?: number | string;
   video_count: number;
+  post_count?: number | string;
 }
 
 export default function InstagramDownloaderPage() {
@@ -47,9 +58,15 @@ export default function InstagramDownloaderPage() {
   const [loading, setLoading] = useState(false);
   const [profile, setProfile] = useState<ProfileInfo | null>(null);
   const [posts, setPosts] = useState<InstagramPost[]>([]);
+  const [highlights, setHighlights] = useState<ScrapedHighlight[]>([]);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
+
+  // Filtro de seções/abas e Ordenação
+  const [activeTab, setActiveTab] = useState<string>('all');
+  const [sortBy, setSortBy] = useState<string>('recent_to_old');
+  const [copiedBio, setCopiedBio] = useState(false);
 
   // Estados de download
   const [downloadingZip, setDownloadingZip] = useState(false);
@@ -65,12 +82,18 @@ export default function InstagramDownloaderPage() {
     setSuccessMsg(null);
     setProfile(null);
     setPosts([]);
+    setHighlights([]);
+    setActiveTab('all');
 
     try {
       const data = await fetchInstagramProfile(query.trim(), Number(maxPosts));
 
       if (data.user_info) {
         setProfile(data.user_info as any);
+      }
+
+      if (data.highlights) {
+        setHighlights(data.highlights);
       }
 
       const fetchedPosts: InstagramPost[] = (data.posts || []) as any;
@@ -81,7 +104,7 @@ export default function InstagramDownloaderPage() {
 
       setPosts(finalPosts);
       setSelectedIds(new Set(finalPosts.map((p) => p.id)));
-      setSuccessMsg(`Encontrados ${finalPosts.length} posts/reels de alta qualidade!`);
+      setSuccessMsg(`Encontradas ${finalPosts.length} mídias públicas de alta qualidade!`);
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -89,12 +112,99 @@ export default function InstagramDownloaderPage() {
     }
   };
 
-  const toggleSelectAll = () => {
-    if (selectedIds.size === posts.length) {
-      setSelectedIds(new Set());
-    } else {
-      setSelectedIds(new Set(posts.map((p) => p.id)));
+  const handleCopyBio = () => {
+    if (!profile?.signature) return;
+    navigator.clipboard.writeText(profile.signature);
+    setCopiedBio(true);
+    setTimeout(() => setCopiedBio(false), 2500);
+  };
+
+  // Contadores por categoria
+  const counts = useMemo(() => {
+    const feedPosts = posts.filter((p) => p.type !== 'avatar');
+    const photos = posts.filter((p) => p.type === 'photo');
+    const reels = posts.filter((p) => p.type === 'reel');
+    return {
+      all: feedPosts.length,
+      photos: photos.length,
+      reels: reels.length,
+      highlights: highlights.length,
+    };
+  }, [posts, highlights]);
+
+  // Filtragem e Ordenação
+  const displayedPosts = useMemo(() => {
+    let filtered = posts.filter((p) => {
+      if (activeTab === 'all') {
+        return p.type !== 'avatar';
+      }
+      if (activeTab === 'photos') {
+        return p.type === 'photo';
+      }
+      if (activeTab === 'reels') {
+        return p.type === 'reel';
+      }
+      if (activeTab.startsWith('highlight_')) {
+        const hlId = activeTab.replace('highlight_', '');
+        return p.id.includes(hlId) || p.highlight_name === activeTab;
+      }
+      return true;
+    });
+
+    // Se filtrou por destaque específico e não achou post direto correspondente, usa o item de destaque
+    if (activeTab.startsWith('highlight_') && filtered.length === 0) {
+      const currentHl = highlights.find((h) => h.id === activeTab || h.highlight_id === activeTab.replace('highlight_', ''));
+      if (currentHl) {
+        filtered = [
+          {
+            id: currentHl.id,
+            url: currentHl.url,
+            thumbnail: currentHl.cover || profile?.avatar || '',
+            caption: `Destaque: ${currentHl.title}`,
+            is_video: false,
+            type: 'highlight',
+            highlight_name: currentHl.title,
+            direct_media_url: currentHl.cover,
+          },
+        ];
+      }
     }
+
+    // Ordenação
+    return [...filtered].sort((a, b) => {
+      if (sortBy === 'recent_to_old') {
+        return (a.order_index ?? 0) - (b.order_index ?? 0);
+      }
+      if (sortBy === 'oldest_to_recent') {
+        return (b.order_index ?? 0) - (a.order_index ?? 0);
+      }
+      if (sortBy === 'most_likes') {
+        return (b.like_count || 0) - (a.like_count || 0);
+      }
+      if (sortBy === 'most_views') {
+        return (b.view_count || 0) - (a.view_count || 0);
+      }
+      if (sortBy === 'most_comments') {
+        return (b.comment_count || 0) - (a.comment_count || 0);
+      }
+      if (sortBy === 'most_saves') {
+        return (b.save_count || 0) - (a.save_count || 0);
+      }
+      return 0;
+    });
+  }, [posts, highlights, activeTab, sortBy, profile]);
+
+  const toggleSelectAll = () => {
+    const currentIds = displayedPosts.map((p) => p.id);
+    const allSelected = currentIds.every((id) => selectedIds.has(id));
+
+    const next = new Set(selectedIds);
+    if (allSelected) {
+      currentIds.forEach((id) => next.delete(id));
+    } else {
+      currentIds.forEach((id) => next.add(id));
+    }
+    setSelectedIds(next);
   };
 
   const toggleSelectPost = (id: string) => {
@@ -155,7 +265,7 @@ export default function InstagramDownloaderPage() {
           </div>
           <h1 className="text-2xl font-extrabold text-white">Baixar Perfil (Instagram)</h1>
           <p className="text-xs text-gray-400 mt-1">
-            Extraia Reels, vídeos e fotos em alta resolução com limpeza de metadados anti-reutilização automática.
+            Extraia Fotos, Reels, Destaques e mídias em alta resolução com higienização de metadados anti-reutilização automática.
           </p>
         </div>
 
@@ -182,7 +292,7 @@ export default function InstagramDownloaderPage() {
               <select
                 value={maxPosts}
                 onChange={(e) => setMaxPosts(e.target.value)}
-                className="bg-gray-950 border border-gray-800 rounded-2xl px-4 py-3.5 text-xs text-white focus:outline-none focus:border-pink-500"
+                className="bg-gray-950 border border-gray-800 rounded-2xl px-4 py-3.5 text-xs text-white focus:outline-none focus:border-pink-500 cursor-pointer"
               >
                 <option value="0">Todos os posts (Perfil Completo)</option>
                 <option value="12">Últimos 12 posts</option>
@@ -216,32 +326,45 @@ export default function InstagramDownloaderPage() {
           )}
         </div>
 
-        {/* Profile Card & Posts Grid */}
-        {posts.length > 0 && (
-          <div className="space-y-6">
-            {/* Profile Header & Actions */}
-            <div className="bg-gray-900 border border-gray-800 rounded-3xl p-6 shadow-xl flex flex-col md:flex-row items-center justify-between gap-6">
+        {/* Profile Card & Bio Section */}
+        {profile && (
+          <div className="bg-gray-900 border border-gray-800 rounded-3xl p-6 shadow-xl space-y-5">
+            <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+              {/* Avatar + Nick + Stats */}
               <div className="flex items-center gap-4">
-                <img
-                  src={profile?.avatar || posts[0]?.thumbnail || 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=120&h=120&fit=crop'}
-                  alt={profile?.nickname || 'Perfil'}
-                  className="w-16 h-16 rounded-full object-cover ring-2 ring-pink-500/40"
-                />
+                <div className="relative">
+                  <img
+                    src={profile.avatar || posts[0]?.thumbnail || 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=120&h=120&fit=crop'}
+                    alt={profile.nickname || 'Perfil'}
+                    className="w-16 h-16 rounded-full object-cover ring-2 ring-pink-500/50 shadow-md"
+                  />
+                  <span className="absolute -bottom-1 -right-1 bg-pink-600 text-[10px] font-bold px-1.5 py-0.5 rounded-full text-white border border-gray-900">
+                    HD
+                  </span>
+                </div>
+
                 <div>
                   <h2 className="text-lg font-bold text-white flex items-center gap-2">
-                    {profile?.nickname || profile?.username || 'Perfil Instagram'}
-                    <span className="text-xs text-gray-400 font-normal">@{profile?.username || query}</span>
+                    {profile.nickname || profile.username || 'Perfil Instagram'}
+                    <span className="text-xs text-gray-400 font-normal">@{profile.username || query}</span>
                   </h2>
-                  <p className="text-xs text-gray-300 mt-1 max-w-lg line-clamp-2">
-                    {profile?.signature || 'Publicações e Reels disponíveis para download'}
-                  </p>
-                  <div className="flex items-center gap-4 mt-2 text-xs text-gray-400">
+
+                  {/* Followers & Count Stats */}
+                  <div className="flex flex-wrap items-center gap-3 mt-1.5 text-xs text-gray-400">
                     <span>
-                      <strong className="text-white">{posts.length}</strong> publicações carregadas
+                      <strong className="text-white">{profile.post_count || posts.length}</strong> publicações
                     </span>
                     <span>•</span>
+                    {profile.follower_count ? (
+                      <>
+                        <span>
+                          <strong className="text-white">{profile.follower_count}</strong> seguidores
+                        </span>
+                        <span>•</span>
+                      </>
+                    ) : null}
                     <span className="text-pink-400 font-semibold">
-                      {selectedIds.size} selecionadas
+                      {selectedIds.size} de {posts.length} selecionadas
                     </span>
                   </div>
                 </div>
@@ -253,8 +376,12 @@ export default function InstagramDownloaderPage() {
                   onClick={toggleSelectAll}
                   className="py-2.5 px-4 bg-gray-800 hover:bg-gray-700 text-gray-200 text-xs font-semibold rounded-xl border border-gray-700 transition flex items-center gap-2"
                 >
-                  {selectedIds.size === posts.length ? <Square className="w-3.5 h-3.5" /> : <CheckSquare className="w-3.5 h-3.5" />}
-                  {selectedIds.size === posts.length ? 'Desmarcar Todos' : 'Selecionar Todos'}
+                  {selectedIds.size === displayedPosts.length && displayedPosts.length > 0 ? (
+                    <Square className="w-3.5 h-3.5" />
+                  ) : (
+                    <CheckSquare className="w-3.5 h-3.5" />
+                  )}
+                  {selectedIds.size === displayedPosts.length && displayedPosts.length > 0 ? 'Desmarcar Todos' : 'Selecionar Todos'}
                 </button>
 
                 <button
@@ -277,9 +404,168 @@ export default function InstagramDownloaderPage() {
               </div>
             </div>
 
+            {/* BIO Card with 1-Click Copy Icon Preserving Exact Formatting */}
+            {profile.signature && (
+              <div className="bg-gray-950 border border-gray-800/90 rounded-2xl p-4 relative group">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">
+                    Biografia do Perfil
+                  </span>
+                  <button
+                    onClick={handleCopyBio}
+                    className="flex items-center gap-1.5 px-3 py-1 bg-pink-500/10 hover:bg-pink-500/20 text-pink-400 border border-pink-500/20 rounded-lg text-xs font-medium transition active:scale-95"
+                    title="Copiar biografia com formatação original"
+                  >
+                    {copiedBio ? (
+                      <>
+                        <Check className="w-3.5 h-3.5 text-emerald-400" />
+                        <span className="text-emerald-400 font-bold">Copiado!</span>
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="w-3.5 h-3.5" />
+                        <span>Copiar Bio</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+                <div className="whitespace-pre-wrap font-sans text-xs text-gray-300 leading-relaxed break-words">
+                  {profile.signature}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Category Tabs & Sorting Filters Bar */}
+        {posts.length > 0 && (
+          <div className="space-y-4">
+            <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 pb-2 border-b border-gray-800/80">
+              {/* Category Tabs (Seçõezinhas) */}
+              <div className="flex items-center gap-2 overflow-x-auto max-w-full pb-2 md:pb-0 scrollbar-thin">
+                {/* 1. Todas as publicações */}
+                <button
+                  onClick={() => setActiveTab('all')}
+                  className={`px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 whitespace-nowrap flex-shrink-0 ${
+                    activeTab === 'all'
+                      ? 'bg-pink-600 text-white shadow-lg shadow-pink-600/30'
+                      : 'bg-gray-900 text-gray-400 hover:text-white hover:bg-gray-800 border border-gray-800'
+                  }`}
+                >
+                  <Layers className="w-3.5 h-3.5" />
+                  <span>Todas as publicações</span>
+                  <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${activeTab === 'all' ? 'bg-pink-800 text-white' : 'bg-gray-800 text-gray-400'}`}>
+                    {counts.all}
+                  </span>
+                </button>
+
+                {/* 2. Fotos */}
+                <button
+                  onClick={() => setActiveTab('photos')}
+                  className={`px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 whitespace-nowrap flex-shrink-0 ${
+                    activeTab === 'photos'
+                      ? 'bg-pink-600 text-white shadow-lg shadow-pink-600/30'
+                      : 'bg-gray-900 text-gray-400 hover:text-white hover:bg-gray-800 border border-gray-800'
+                  }`}
+                >
+                  <ImageIcon className="w-3.5 h-3.5 text-cyan-400" />
+                  <span>Fotos (Feed)</span>
+                  <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${activeTab === 'photos' ? 'bg-pink-800 text-white' : 'bg-gray-800 text-gray-400'}`}>
+                    {counts.photos}
+                  </span>
+                </button>
+
+                {/* 3. Reels */}
+                <button
+                  onClick={() => setActiveTab('reels')}
+                  className={`px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 whitespace-nowrap flex-shrink-0 ${
+                    activeTab === 'reels'
+                      ? 'bg-pink-600 text-white shadow-lg shadow-pink-600/30'
+                      : 'bg-gray-900 text-gray-400 hover:text-white hover:bg-gray-800 border border-gray-800'
+                  }`}
+                >
+                  <Film className="w-3.5 h-3.5 text-pink-400" />
+                  <span>Reels</span>
+                  <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${activeTab === 'reels' ? 'bg-pink-800 text-white' : 'bg-gray-800 text-gray-400'}`}>
+                    {counts.reels}
+                  </span>
+                </button>
+
+                {/* 4. Destaques dinâmicos com Capa Fixada */}
+                {highlights.map((hl) => {
+                  const isActive = activeTab === hl.id || activeTab === `highlight_${hl.highlight_id}`;
+                  return (
+                    <button
+                      key={hl.id}
+                      onClick={() => setActiveTab(hl.id)}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-2 whitespace-nowrap flex-shrink-0 ${
+                        isActive
+                          ? 'bg-pink-600 text-white shadow-lg shadow-pink-600/30 ring-2 ring-pink-400'
+                          : 'bg-gray-900 text-gray-400 hover:text-white hover:bg-gray-800 border border-gray-800'
+                      }`}
+                    >
+                      <img
+                        src={hl.cover || profile?.avatar || 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=80&h=80&fit=crop'}
+                        alt={hl.title}
+                        className="w-5 h-5 rounded-full object-cover ring-1 ring-pink-400/80"
+                      />
+                      <span>Destaque: {hl.title}</span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Sorting Filter Dropdown */}
+              <div className="flex items-center gap-2 w-full md:w-auto justify-end flex-shrink-0">
+                <div className="flex items-center gap-2 bg-gray-900 border border-gray-800 rounded-xl px-3 py-1.5">
+                  <ArrowUpDown className="w-3.5 h-3.5 text-pink-400" />
+                  <span className="text-[11px] text-gray-400 font-semibold hidden sm:inline">Ordenar:</span>
+                  <select
+                    value={sortBy}
+                    onChange={(e) => setSortBy(e.target.value)}
+                    className="bg-transparent text-xs text-white font-medium focus:outline-none cursor-pointer pr-1"
+                  >
+                    <option value="recent_to_old" className="bg-gray-900 text-white">
+                      Mais recente &gt; antiga
+                    </option>
+                    <option value="oldest_to_recent" className="bg-gray-900 text-white">
+                      Mais antiga &gt; recente
+                    </option>
+                    <option value="most_likes" className="bg-gray-900 text-white">
+                      Mais curtidas
+                    </option>
+                    <option value="most_views" className="bg-gray-900 text-white">
+                      Mais visualizações
+                    </option>
+                    <option value="most_comments" className="bg-gray-900 text-white">
+                      Mais comentários
+                    </option>
+                    <option value="most_saves" className="bg-gray-900 text-white">
+                      Mais salvos
+                    </option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            {/* Content Display Info */}
+            <div className="flex items-center justify-between text-xs text-gray-400 px-1">
+              <span>
+                Exibindo <strong className="text-white">{displayedPosts.length}</strong> itens ordenados por{' '}
+                <span className="text-pink-400 font-medium">
+                  {sortBy === 'recent_to_old' && 'Mais recente > antiga'}
+                  {sortBy === 'oldest_to_recent' && 'Mais antiga > recente'}
+                  {sortBy === 'most_likes' && 'Mais curtidas'}
+                  {sortBy === 'most_views' && 'Mais visualizações'}
+                  {sortBy === 'most_comments' && 'Mais comentários'}
+                  {sortBy === 'most_saves' && 'Mais salvos'}
+                </span>
+              </span>
+            </div>
+
             {/* Posts Grid */}
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-              {posts.map((post) => {
+              {displayedPosts.map((post) => {
                 const isSelected = selectedIds.has(post.id);
                 const isDownloadingThis = downloadingSingleId === post.id;
 
@@ -300,7 +586,13 @@ export default function InstagramDownloaderPage() {
                         className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
                       />
                       <div className="absolute top-2 left-2 bg-black/70 backdrop-blur-sm p-1.5 rounded-lg text-white">
-                        {post.is_video ? <Film className="w-3.5 h-3.5 text-pink-400" /> : <ImageIcon className="w-3.5 h-3.5 text-cyan-400" />}
+                        {post.is_video ? (
+                          <Film className="w-3.5 h-3.5 text-pink-400" />
+                        ) : post.type === 'highlight' ? (
+                          <Sparkle className="w-3.5 h-3.5 text-amber-400" />
+                        ) : (
+                          <ImageIcon className="w-3.5 h-3.5 text-cyan-400" />
+                        )}
                       </div>
 
                       <div className="absolute top-2 right-2">

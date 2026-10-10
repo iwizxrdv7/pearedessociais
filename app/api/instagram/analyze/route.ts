@@ -27,6 +27,8 @@ export async function POST(req: Request) {
       if (fastApiRes.ok) {
         const fastApiData = await fastApiRes.json();
         const rawPosts = fastApiData.data?.posts || fastApiData.data?.videos || [];
+        const rawUser = fastApiData.data?.user || fastApiData.data?.user_info || {};
+        const rawHighlights = fastApiData.data?.highlights || [];
 
         const formattedPosts = rawPosts.map((p: any) => ({
           id: p.id,
@@ -38,22 +40,27 @@ export async function POST(req: Request) {
           is_video: p.is_video ?? (p.type === 'reel' || (p.play_url && p.play_url.includes('.mp4'))),
           like_count: p.like_count || 0,
           comment_count: p.comment_count || 0,
+          view_count: p.view_count || 0,
+          save_count: p.save_count || 0,
           direct_media_url: p.play_url || p.cover || '',
           type: p.type || (p.is_video ? 'reel' : 'post'),
+          highlight_name: p.highlight_name,
         }));
 
         return NextResponse.json({
           status: 'success',
           data: {
-            user_info: fastApiData.data?.user_info || {
-              username,
-              nickname: username,
-              avatar: formattedPosts[0]?.thumbnail || '',
-              signature: 'Perfil verificado com sucesso',
-              follower_count: 0,
-              video_count: formattedPosts.length,
+            user_info: {
+              username: rawUser.username || username,
+              nickname: rawUser.nickname || rawUser.username || username,
+              avatar: rawUser.avatar || formattedPosts[0]?.thumbnail || '',
+              signature: rawUser.signature || rawUser.biography || 'Perfil do Instagram',
+              follower_count: rawUser.followers_count || rawUser.follower_count || 0,
+              following_count: rawUser.following_count || 0,
+              post_count: rawUser.posts_count || formattedPosts.length,
             },
             posts: formattedPosts,
+            highlights: rawHighlights,
           },
         });
       }
