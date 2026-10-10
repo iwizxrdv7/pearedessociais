@@ -1,12 +1,15 @@
 # Dependências
-/node_modules
+node_modules/
+**/node_modules/
 /.pnp
 .pnp.js
 
-# Build do Next.js
+# Build
 /.next/
 /out/
 /build
+dist/
+**/dist/
 
 # Arquivos de ambiente e segredos sensíveis (NÃO ENVIAR PARA O GITHUB)
 .env

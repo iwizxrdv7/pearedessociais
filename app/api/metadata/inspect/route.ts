@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
-import { executePythonBridge } from '@/lib/mediahub_bridge';
-import fs from 'fs';
-import path from 'path';
+import { inspectMediaBytes } from '@/lib/pure_cleaner';
+
+export const dynamic = 'force-dynamic';
 
 export async function POST(req: Request) {
   try {
@@ -12,17 +12,8 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Nenhum arquivo enviado.' }, { status: 400 });
     }
 
-    const tempDir = path.join(process.cwd(), 'data', 'temp');
-    if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir, { recursive: true });
-
-    const tempPath = path.join(tempDir, `inspect_${Date.now()}_${file.name}`);
-    const bytes = await file.arrayBuffer();
-    fs.writeFileSync(tempPath, Buffer.from(bytes));
-
-    const metadata = await executePythonBridge(['metadata_inspect', tempPath]);
-    
-    // Limpar arquivo temporário de inspeção
-    try { fs.unlinkSync(tempPath); } catch {}
+    const bytes = new Uint8Array(await file.arrayBuffer());
+    const metadata = inspectMediaBytes(bytes, file.name);
 
     return NextResponse.json({ status: 'success', data: metadata });
   } catch (err: any) {

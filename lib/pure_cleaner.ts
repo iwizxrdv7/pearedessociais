@@ -386,3 +386,17 @@ export function inspectMediaBytes(bytes: Uint8Array, filename: string): Inspecti
     riskIndicators,
   };
 }
+
+// -------------------------------------------------------------
+// 4. UNIFIED CLEANER
+// -------------------------------------------------------------
+export function cleanMediaBytes(bytes: Uint8Array, filename: string): { cleaned: Uint8Array; removed: string[] } {
+  const ext = filename.toLowerCase().split('.').pop() || '';
+  if (['mp4', 'mov', 'm4v'].includes(ext)) {
+    return cleanMp4Bytes(bytes);
+  } else if (['jpg', 'jpeg'].includes(ext)) {
+    return cleanJpegBytes(bytes);
+  }
+  return { cleaned: bytes, removed: ['Formato sem metadados proprietários críticos ou preservado'] };
+}
+
