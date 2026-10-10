@@ -19,8 +19,18 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: `Falha ao obter mídia: ${mediaRes.statusText}` }, { status: mediaRes.status });
     }
 
-    const contentType = mediaRes.headers.get('content-type') || 'application/octet-stream';
+    let contentType = mediaRes.headers.get('content-type') || 'application/octet-stream';
     const buffer = await mediaRes.arrayBuffer();
+    const u8 = new Uint8Array(buffer);
+
+    // Detecção segura por magic bytes
+    if (u8[0] === 0xff && u8[1] === 0xd8) {
+      contentType = 'image/jpeg';
+    } else if (u8[0] === 0x89 && u8[1] === 0x50 && u8[2] === 0x4e && u8[3] === 0x47) {
+      contentType = 'image/png';
+    } else if (u8.length > 8 && String.fromCharCode(u8[4], u8[5], u8[6], u8[7]) === 'ftyp') {
+      contentType = 'video/mp4';
+    }
 
     return new NextResponse(buffer, {
       headers: {

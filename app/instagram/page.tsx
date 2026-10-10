@@ -230,8 +230,11 @@ export default function InstagramDownloaderPage() {
     try {
       setDownloadingSingleId(post.id);
       const mediaUrl = post.direct_media_url || post.thumbnail;
-      const safeTitle = (post.caption || `instagram_${post.id}`).slice(0, 30);
-      await downloadCleanSingleMedia(mediaUrl, safeTitle, post.is_video);
+      const isAvatar = post.type === 'avatar';
+      const safeTitle = isAvatar
+        ? `avatar_${profile?.username || 'instagram'}`
+        : (post.caption || `instagram_${post.id}`).slice(0, 30);
+      await downloadCleanSingleMedia(mediaUrl, safeTitle, post.is_video, isAvatar);
     } catch (err: any) {
       alert(`Erro ao baixar: ${err.message}`);
     } finally {
@@ -250,8 +253,9 @@ export default function InstagramDownloaderPage() {
       const items = selectedPosts.map((p) => ({
         id: p.id,
         url: p.direct_media_url || p.thumbnail,
-        title: p.caption,
+        title: p.type === 'avatar' ? `avatar_${profile?.username || 'instagram'}` : p.caption,
         isVideo: p.is_video,
+        type: p.type,
       }));
 
       await downloadCleanBatchZip(items, profile?.username || 'instagram', (pct) => {
