@@ -150,7 +150,7 @@ export async function scrapeInstagramProfile(inputUrl: string, maxItems: number 
   ];
 
   let html = '';
-  let lastError: any = null;
+  let debugInfo: string[] = [];
 
   for (const ua of crawlerUserAgents) {
     try {
@@ -161,29 +161,32 @@ export async function scrapeInstagramProfile(inputUrl: string, maxItems: number 
           'Accept-Language': 'pt-BR,pt;q=0.9,en-US;q=0.8',
           'Sec-Fetch-Mode': 'navigate',
         },
+        redirect: 'follow',
       });
+
+      debugInfo.push(`UA: ${ua.split(' ')[0]} => HTTP ${res.status}`);
 
       if (res.ok) {
         const text = await res.text();
+        debugInfo.push(`Len: ${text.length}, hasTL: ${text.includes('polaris_timeline_connection')}, hasUser: ${text.includes('xig_user_by_igid_v2')}`);
         if (
           text.includes('polaris_timeline_connection') ||
           text.includes('xig_user_by_igid_v2') ||
-          text.includes('edge_owner_to_timeline_media') ||
-          text.includes(username)
+          text.includes('edge_owner_to_timeline_media')
         ) {
           html = text;
           break;
         }
       }
-    } catch (err) {
+    } catch (err: any) {
       lastError = err;
+      debugInfo.push(`Err: ${err.message}`);
     }
   }
 
   if (!html) {
     throw new Error(
-      lastError?.message ||
-        `Não foi possível carregar o perfil público @${username}. Verifique se o perfil existe e é público.`
+      `Falha ao extrair perfil @${username} no servidor Vercel. Diagnóstico: [${debugInfo.join(' | ')}]`
     );
   }
 
