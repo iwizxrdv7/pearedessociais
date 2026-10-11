@@ -10,6 +10,8 @@ node_modules/
 /build
 dist/
 **/dist/
+*.tsbuildinfo
+
 
 # Arquivos de ambiente e segredos sensíveis (NÃO ENVIAR PARA O GITHUB)
 .env

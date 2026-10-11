@@ -2,12 +2,10 @@ import Fastify from 'fastify';
 import cors from '@fastify/cors';
 import multipart from '@fastify/multipart';
 import sensible from '@fastify/sensible';
-import dotenv from 'dotenv';
+import 'dotenv/config';
 import { supabase } from './services/supabase.js';
 import { MetaPublisherService } from './services/meta_publisher.js';
 import { initQueueSystem, scheduleReelJob, getQueueStatus, ReelScheduleJobData } from './services/queue.js';
-
-dotenv.config();
 
 const server = Fastify({
   logger: {
@@ -219,7 +217,7 @@ async function bootstrap() {
     await server.listen({ port: PORT, host: HOST });
     console.log(`[Fastify] Servidor rodando em http://${HOST}:${PORT}`);
   } catch (err) {
-    server.log.error(err);
+    console.error('[Fastify Listen Error]', err);
     process.exit(1);
   }
 }
