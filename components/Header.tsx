@@ -92,7 +92,15 @@ export function Header({ selectedAccountId, onSelectAccount }: HeaderProps) {
               </div>
             </div>
           ) : (
-            <span className="text-xs text-gray-400">Carregando perfis...</span>
+            <div className="flex items-center gap-2 text-left">
+              <div className="w-6 h-6 rounded-full bg-gray-800 border border-gray-700 flex items-center justify-center text-gray-400">
+                <User className="w-3.5 h-3.5" />
+              </div>
+              <div>
+                <div className="text-xs font-semibold text-gray-300">Nenhum Perfil</div>
+                <div className="text-[9px] text-gray-500">Clique para conectar</div>
+              </div>
+            </div>
           )}
           <ChevronDown className="w-3.5 h-3.5 text-gray-400 ml-1" />
         </button>
@@ -104,32 +112,39 @@ export function Header({ selectedAccountId, onSelectAccount }: HeaderProps) {
               Alternar Perfil
             </div>
             <div className="max-h-60 overflow-y-auto py-1">
-              {accounts.map((account) => (
-                <button
-                  key={account.id}
-                  onClick={() => handleSelect(account)}
-                  className={`w-full flex items-center justify-between px-3 py-2 text-left hover:bg-gray-800/80 transition ${
-                    activeAccount?.id === account.id ? 'bg-indigo-600/15 text-indigo-400 font-semibold' : 'text-gray-300'
-                  }`}
-                >
-                  <div className="flex items-center gap-2.5">
-                    <img
-                      src={account.avatar || 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=80&h=80&fit=crop'}
-                      alt={account.name}
-                      className="w-6 h-6 rounded-full object-cover"
-                    />
-                    <div>
-                      <div className="text-xs font-medium text-white">{account.name}</div>
-                      <div className="text-[10px] text-gray-400">
-                        {account.instagram_username ? `@${account.instagram_username}` : account.facebook_page_name || 'Facebook'}
+              {accounts.length === 0 ? (
+                <div className="px-4 py-4 text-center">
+                  <p className="text-xs text-gray-300 font-medium">Nenhum perfil conectado</p>
+                  <p className="text-[10px] text-gray-500 mt-1">Conecte seu Instagram ou Facebook para começar</p>
+                </div>
+              ) : (
+                accounts.map((account) => (
+                  <button
+                    key={account.id}
+                    onClick={() => handleSelect(account)}
+                    className={`w-full flex items-center justify-between px-3 py-2 text-left hover:bg-gray-800/80 transition ${
+                      activeAccount?.id === account.id ? 'bg-indigo-600/15 text-indigo-400 font-semibold' : 'text-gray-300'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <img
+                        src={account.avatar || 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=80&h=80&fit=crop'}
+                        alt={account.name}
+                        className="w-6 h-6 rounded-full object-cover"
+                      />
+                      <div>
+                        <div className="text-xs font-medium text-white">{account.name}</div>
+                        <div className="text-[10px] text-gray-400">
+                          {account.instagram_username ? `@${account.instagram_username}` : account.facebook_page_name || 'Facebook'}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                  {activeAccount?.id === account.id && (
-                    <CheckCircle2 className="w-4 h-4 text-indigo-400" />
-                  )}
-                </button>
-              ))}
+                    {activeAccount?.id === account.id && (
+                      <CheckCircle2 className="w-4 h-4 text-indigo-400" />
+                    )}
+                  </button>
+                ))
+              )}
             </div>
             <div className="border-t border-gray-800 p-2">
               <Link

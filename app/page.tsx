@@ -19,7 +19,8 @@ import {
   Instagram,
   Facebook,
   Zap,
-  ShieldCheck
+  ShieldCheck,
+  PlusCircle
 } from 'lucide-react';
 
 export default function DashboardPage() {
@@ -112,6 +113,30 @@ export default function DashboardPage() {
             </div>
           </div>
         </div>
+
+        {/* Onboarding Banner when no accounts */}
+        {accounts.length === 0 && !loading && (
+          <div className="bg-[#111726] border border-indigo-500/30 rounded-3xl p-6 shadow-xl flex flex-col md:flex-row items-center justify-between gap-4 animate-in fade-in">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-2xl bg-indigo-600/20 border border-indigo-500/30 flex items-center justify-center text-indigo-400 flex-shrink-0">
+                <Sparkles className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-white">Nenhum perfil conectado ainda</h3>
+                <p className="text-xs text-gray-400 mt-0.5">
+                  Conecte sua primeira página do Facebook ou conta do Instagram para começar a postar e agendar Reels automaticamente.
+                </p>
+              </div>
+            </div>
+            <Link
+              href="/contas"
+              className="py-2.5 px-5 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-bold text-xs rounded-xl shadow-md shadow-indigo-600/25 transition flex items-center gap-2 flex-shrink-0"
+            >
+              <PlusCircle className="w-4 h-4" />
+              Conectar Primeiro Perfil
+            </Link>
+          </div>
+        )}
 
         {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">

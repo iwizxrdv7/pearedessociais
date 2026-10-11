@@ -1,6 +1,6 @@
 import crypto from 'crypto';
 import { cookies } from 'next/headers';
-import { supabase } from './supabase';
+import { supabase, supabaseAdmin } from './supabase';
 
 export const AUTH_COOKIE_NAME = 'pea_auth_token';
 
@@ -57,7 +57,7 @@ export function verifySessionToken(token: string): AuthUser | null {
       id: data.id,
       email: data.email,
       name: data.name,
-      role: data.role || 'admin',
+      role: data.role || 'user',
     };
   } catch {
     return null;
@@ -65,46 +65,66 @@ export function verifySessionToken(token: string): AuthUser | null {
 }
 
 /**
- * Autentica o usuário com Supabase ou credenciais de Administrador
+ * Autentica o usuário no banco de dados Supabase
  */
 export async function authenticateUser(email: string, password: string): Promise<AuthUser | null> {
   const cleanEmail = email.trim().toLowerCase();
 
-  // 1. Verificar credenciais de Admin Master configuradas no ambiente
-  const adminEmail = (process.env.ADMIN_EMAIL || 'admin@pearedessociais.com').toLowerCase().trim();
-  const adminPassword = process.env.ADMIN_PASSWORD || 'admin123';
-
-  if (cleanEmail === adminEmail && password === adminPassword) {
-    return {
-      id: 'admin_master',
+  try {
+    const { data, error } = await supabase.auth.signInWithPassword({
       email: cleanEmail,
-      name: 'Administrador P&A',
-      role: 'admin',
-    };
-  }
+      password,
+    });
 
-  // 2. Tentar autenticar via Supabase Auth se o Supabase estiver configurado
-  if (process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
-    try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email: cleanEmail,
-        password,
-      });
-
-      if (!error && data?.user) {
-        return {
-          id: data.user.id,
-          email: data.user.email || cleanEmail,
-          name: data.user.user_metadata?.name || cleanEmail.split('@')[0],
-          role: 'admin',
-        };
-      }
-    } catch (e) {
-      console.warn('Erro ao autenticar com Supabase Auth:', e);
+    if (!error && data?.user) {
+      return {
+        id: data.user.id,
+        email: data.user.email || cleanEmail,
+        name: data.user.user_metadata?.name || cleanEmail.split('@')[0],
+        role: 'user',
+      };
     }
+  } catch (e) {
+    console.warn('Erro ao autenticar com Supabase Auth:', e);
   }
 
   return null;
+}
+
+/**
+ * Registra um novo usuário no banco de dados Supabase
+ */
+export async function registerUser(name: string, email: string, password: string): Promise<{ user: AuthUser | null; error?: string }> {
+  const cleanEmail = email.trim().toLowerCase();
+  const cleanName = name.trim();
+
+  try {
+    const { data, error } = await supabaseAdmin.auth.admin.createUser({
+      email: cleanEmail,
+      password,
+      email_confirm: true,
+      user_metadata: { name: cleanName },
+    });
+
+    if (error) {
+      return { user: null, error: error.message };
+    }
+
+    if (data?.user) {
+      return {
+        user: {
+          id: data.user.id,
+          email: data.user.email || cleanEmail,
+          name: cleanName,
+          role: 'user',
+        },
+      };
+    }
+  } catch (err: any) {
+    return { user: null, error: err.message || 'Erro ao registrar usuário.' };
+  }
+
+  return { user: null, error: 'Falha ao criar usuário.' };
 }
 
 /**

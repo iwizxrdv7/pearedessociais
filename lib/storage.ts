@@ -21,7 +21,7 @@ function ensureDbDir() {
 export async function getAccountsAsync(): Promise<SocialAccount[]> {
   try {
     const { data, error } = await supabaseAdmin.from('accounts').select('*').order('created_at', { ascending: false });
-    if (!error && data && data.length > 0) {
+    if (!error && data) {
       return data as SocialAccount[];
     }
   } catch (e) {
@@ -60,7 +60,7 @@ export async function deleteAccountAsync(id: string): Promise<void> {
 export async function getPostsAsync(): Promise<VideoPost[]> {
   try {
     const { data, error } = await supabaseAdmin.from('posts').select('*').order('created_at', { ascending: false });
-    if (!error && data && data.length > 0) {
+    if (!error && data) {
       return data as VideoPost[];
     }
   } catch (e) {

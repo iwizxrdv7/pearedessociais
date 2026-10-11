@@ -48,7 +48,8 @@ export function Sidebar() {
 
   // Estado de expansão fixo/controlado pelo usuário para evitar reflows involuntários
   const [isExpanded, setIsExpanded] = useState(true);
-  const [userEmail, setUserEmail] = useState<string>('admin@pearedessociais.com');
+  const [userName, setUserName] = useState<string>('');
+  const [userEmail, setUserEmail] = useState<string>('');
 
   useEffect(() => {
     // Restaurar preferência do usuário do localStorage
@@ -65,6 +66,7 @@ export function Sidebar() {
       .then((data) => {
         if (data?.user?.email) {
           setUserEmail(data.user.email);
+          setUserName(data.user.name || data.user.email.split('@')[0]);
         }
       })
       .catch(() => {});
@@ -230,7 +232,9 @@ export function Sidebar() {
                   <User className="w-3.5 h-3.5" />
                 </div>
                 <div className="truncate">
-                  <div className="text-[11px] font-semibold text-gray-200 truncate leading-tight">Admin P&A</div>
+                  <div className="text-[11px] font-semibold text-gray-200 truncate leading-tight">
+                    {userName || 'Minha Conta'}
+                  </div>
                   <div className="text-[9px] text-gray-400 truncate">{userEmail}</div>
                 </div>
               </div>
