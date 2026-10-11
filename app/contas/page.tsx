@@ -12,7 +12,9 @@ import {
   ShieldCheck,
   RefreshCw,
   Facebook,
-  Instagram
+  Instagram,
+  CheckCircle2,
+  AlertCircle
 } from 'lucide-react';
 
 export default function ContasPage() {
@@ -20,6 +22,8 @@ export default function ContasPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [syncingId, setSyncingId] = useState<string | null>(null);
+  const [importing, setImporting] = useState(false);
+  const [feedbackMsg, setFeedbackMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   const fetchAccounts = async () => {
     try {
@@ -35,8 +39,57 @@ export default function ContasPage() {
     }
   };
 
+  const handleImportToken = async (token: string) => {
+    setImporting(true);
+    setFeedbackMsg(null);
+    try {
+      const res = await fetch('/api/accounts/import-meta', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userToken: token }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Falha ao importar perfis da Meta.');
+
+      setFeedbackMsg({
+        type: 'success',
+        text: `Sucesso! ${data.importedCount || 1} perfil(is) importado(s) e conectado(s) com sucesso!`,
+      });
+      await fetchAccounts();
+    } catch (err: any) {
+      setFeedbackMsg({ type: 'error', text: err.message || 'Erro ao importar perfis.' });
+    } finally {
+      setImporting(false);
+    }
+  };
+
   useEffect(() => {
     fetchAccounts();
+
+    // 1. Detectar token no hash da URL (#access_token=...) caso ocorra redirect
+    if (typeof window !== 'undefined' && window.location.hash.includes('access_token')) {
+      const hashParams = new URLSearchParams(window.location.hash.substring(1));
+      const token = hashParams.get('access_token');
+      if (token) {
+        if (window.opener) {
+          window.opener.postMessage({ type: 'META_AUTH_SUCCESS', token }, '*');
+          window.close();
+          return;
+        }
+        window.history.replaceState(null, '', window.location.pathname);
+        handleImportToken(token);
+      }
+    }
+
+    // 2. Escutar mensagem enviada pela janela popup caso o OAuth tenha aberto nela
+    const handleMessage = (event: MessageEvent) => {
+      if (event.data?.type === 'META_AUTH_SUCCESS' && event.data.token) {
+        handleImportToken(event.data.token);
+      }
+    };
+
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
   }, []);
 
   const handleSyncAccount = async (id: string) => {
@@ -76,6 +129,31 @@ export default function ContasPage() {
       <Header />
 
       <div className="p-8 max-w-7xl mx-auto space-y-8">
+        {/* Loading ou Feedback de Importação */}
+        {importing && (
+          <div className="bg-indigo-600/10 border border-indigo-500/30 p-4 rounded-2xl flex items-center gap-3 text-indigo-300 text-xs animate-in fade-in">
+            <RefreshCw className="w-4 h-4 animate-spin text-indigo-400 flex-shrink-0" />
+            <span>Conectando com a Meta e importando suas Páginas e Contas do Instagram...</span>
+          </div>
+        )}
+
+        {feedbackMsg && (
+          <div
+            className={`p-4 rounded-2xl border text-xs flex items-center gap-3 animate-in fade-in ${
+              feedbackMsg.type === 'success'
+                ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300'
+                : 'bg-rose-500/10 border-rose-500/30 text-rose-300'
+            }`}
+          >
+            {feedbackMsg.type === 'success' ? (
+              <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0" />
+            ) : (
+              <AlertCircle className="w-4 h-4 text-rose-400 flex-shrink-0" />
+            )}
+            <span>{feedbackMsg.text}</span>
+          </div>
+        )}
+
         {/* Top Header */}
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
           <div>

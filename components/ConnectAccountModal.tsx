@@ -45,6 +45,32 @@ export function ConnectAccountModal({ isOpen, onClose, onAccountAdded }: Connect
     window.open(authUrl, '_blank', 'width=600,height=700');
   };
 
+  const [quickToken, setQuickToken] = useState('');
+  const [importLoading, setImportLoading] = useState(false);
+
+  const handleQuickTokenImport = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!quickToken) return;
+    setImportLoading(true);
+    setError(null);
+    try {
+      const res = await fetch('/api/accounts/import-meta', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userToken: quickToken.trim() }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Falha ao importar da Meta.');
+
+      onAccountAdded();
+      onClose();
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setImportLoading(false);
+    }
+  };
+
   const handleManualSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -133,7 +159,7 @@ export function ConnectAccountModal({ isOpen, onClose, onAccountAdded }: Connect
           )}
 
           {tab === 'oauth' ? (
-            <div className="space-y-5 text-center py-4">
+            <div className="space-y-4 text-center py-2">
               <div className="w-16 h-16 rounded-3xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center mx-auto shadow-xl shadow-blue-500/20">
                 <Facebook className="w-8 h-8 text-white" />
               </div>
@@ -146,7 +172,7 @@ export function ConnectAccountModal({ isOpen, onClose, onAccountAdded }: Connect
 
               <div className="bg-gray-950 p-4 rounded-2xl border border-gray-800 text-left space-y-2 text-xs text-gray-300">
                 <div className="flex items-center gap-2 text-emerald-400 font-medium">
-                  <ShieldCheck className="w-4 h-4" />
+                  <ShieldCheck className="w-4 h-4 flex-shrink-0" />
                   Conexão Oficial via Meta Graph API v20.0
                 </div>
                 <p className="text-[11px] text-gray-400">
@@ -156,81 +182,124 @@ export function ConnectAccountModal({ isOpen, onClose, onAccountAdded }: Connect
 
               <button
                 onClick={handleOAuthConnect}
-                className="w-full py-3.5 px-4 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-sm rounded-2xl shadow-xl shadow-indigo-600/30 transition-all flex items-center justify-center gap-2"
+                className="w-full py-3.5 px-4 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-sm rounded-2xl shadow-xl shadow-indigo-600/30 transition-all flex items-center justify-center gap-2 cursor-pointer"
               >
                 <Facebook className="w-5 h-5" />
                 Conectar Conta Meta
               </button>
+
+              <div className="text-[11px] text-gray-400 bg-gray-950/70 p-3 rounded-xl border border-gray-800/80 text-left space-y-1">
+                <div className="font-semibold text-gray-300">💡 Dica para o Painel Meta Developers:</div>
+                <p className="text-gray-400 text-[10.5px]">
+                  Adicione <code className="bg-gray-900 text-indigo-400 px-1 py-0.5 rounded">pearedessociais.vercel.app</code> em <strong className="text-gray-300">Domínios do App</strong> e em <strong className="text-gray-300">URIs de Redirecionamento do OAuth</strong> no painel de seu app na Meta.
+                </p>
+              </div>
             </div>
           ) : (
-            <form onSubmit={handleManualSubmit} className="space-y-4">
-              <div>
-                <label className="block text-xs font-semibold text-gray-300 mb-1">Nome do Perfil</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="Ex: Minha Nova Loja"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  className="w-full bg-gray-950 border border-gray-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-gray-300 mb-1">Facebook Page ID</label>
-                  <input
-                    type="text"
-                    placeholder="Ex: 1234567890"
-                    value={formData.facebook_page_id}
-                    onChange={(e) => setFormData({ ...formData, facebook_page_id: e.target.value })}
-                    className="w-full bg-gray-950 border border-gray-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500"
-                  />
+            <div className="space-y-6">
+              {/* Opção Rápida: Importar via Token */}
+              <div className="bg-indigo-600/10 border border-indigo-500/30 p-4 rounded-2xl space-y-3">
+                <div className="flex items-center gap-2 text-xs font-bold text-indigo-300">
+                  <Sparkles className="w-4 h-4 text-indigo-400" />
+                  Importação Rápida via Token da Meta
                 </div>
-                <div>
-                  <label className="block text-xs font-semibold text-gray-300 mb-1">Instagram (@username)</label>
-                  <input
-                    type="text"
-                    placeholder="Ex: meuperfil"
-                    value={formData.instagram_username}
-                    onChange={(e) => setFormData({ ...formData, instagram_username: e.target.value })}
-                    className="w-full bg-gray-950 border border-gray-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500"
+                <p className="text-[11px] text-gray-400">
+                  Cole seu Token de Acesso da Meta (do Graph API Explorer ou da Página) para o sistema detectar suas páginas e contas do Instagram automaticamente:
+                </p>
+                <form onSubmit={handleQuickTokenImport} className="space-y-2.5">
+                  <textarea
+                    rows={2}
+                    required
+                    placeholder="Cole seu token de acesso EAAB..."
+                    value={quickToken}
+                    onChange={(e) => setQuickToken(e.target.value)}
+                    className="w-full bg-gray-950 border border-gray-700/80 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500 font-mono"
                   />
+                  <button
+                    type="submit"
+                    disabled={importLoading || !quickToken}
+                    className="w-full py-2.5 px-4 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-bold text-xs rounded-xl shadow-md shadow-indigo-600/20 transition flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
+                  >
+                    {importLoading ? 'Buscando e Importando...' : '🚀 Descobrir e Conectar Perfis'}
+                  </button>
+                </form>
+              </div>
+
+              {/* Formulário Manual Detalhado */}
+              <div className="border-t border-gray-800 pt-4">
+                <div className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-3">
+                  Ou preencher detalhes manualmente:
                 </div>
-              </div>
+                <form onSubmit={handleManualSubmit} className="space-y-3.5">
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-300 mb-1">Nome do Perfil</label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="Ex: Minha Nova Loja"
+                      value={formData.name}
+                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                      className="w-full bg-gray-950 border border-gray-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500"
+                    />
+                  </div>
 
-              <div>
-                <label className="block text-xs font-semibold text-gray-300 mb-1">Page Access Token</label>
-                <textarea
-                  rows={2}
-                  placeholder="Cole o token permanente de acesso da Página"
-                  value={formData.facebook_page_token}
-                  onChange={(e) => setFormData({ ...formData, facebook_page_token: e.target.value })}
-                  className="w-full bg-gray-950 border border-gray-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500 font-mono"
-                />
-              </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-300 mb-1">Facebook Page ID</label>
+                      <input
+                        type="text"
+                        placeholder="Ex: 1234567890"
+                        value={formData.facebook_page_id}
+                        onChange={(e) => setFormData({ ...formData, facebook_page_id: e.target.value })}
+                        className="w-full bg-gray-950 border border-gray-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-300 mb-1">Instagram (@username)</label>
+                      <input
+                        type="text"
+                        placeholder="Ex: meuperfil"
+                        value={formData.instagram_username}
+                        onChange={(e) => setFormData({ ...formData, instagram_username: e.target.value })}
+                        className="w-full bg-gray-950 border border-gray-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500"
+                      />
+                    </div>
+                  </div>
 
-              <div>
-                <label className="block text-xs font-semibold text-gray-300 mb-1">Horários de Postagem (separados por vírgula)</label>
-                <input
-                  type="text"
-                  placeholder="06:00, 12:00, 18:00, 21:00"
-                  value={formData.schedule_times}
-                  onChange={(e) => setFormData({ ...formData, schedule_times: e.target.value })}
-                  className="w-full bg-gray-950 border border-gray-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500 font-mono"
-                />
-              </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-300 mb-1">Page Access Token</label>
+                    <textarea
+                      rows={2}
+                      placeholder="Cole o token permanente de acesso da Página"
+                      value={formData.facebook_page_token}
+                      onChange={(e) => setFormData({ ...formData, facebook_page_token: e.target.value })}
+                      className="w-full bg-gray-950 border border-gray-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500 font-mono"
+                    />
+                  </div>
 
-              <div className="pt-2">
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="w-full py-3 px-4 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded-xl shadow-lg shadow-indigo-600/30 transition flex items-center justify-center gap-2 disabled:opacity-50"
-                >
-                  {loading ? 'Salvando...' : 'Salvar Perfil'}
-                </button>
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-300 mb-1">Horários de Postagem</label>
+                    <input
+                      type="text"
+                      placeholder="06:00, 12:00, 18:00, 21:00"
+                      value={formData.schedule_times}
+                      onChange={(e) => setFormData({ ...formData, schedule_times: e.target.value })}
+                      className="w-full bg-gray-950 border border-gray-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500 font-mono"
+                    />
+                  </div>
+
+                  <div className="pt-2">
+                    <button
+                      type="submit"
+                      disabled={loading}
+                      className="w-full py-3 px-4 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded-xl shadow-lg shadow-indigo-600/30 transition flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
+                    >
+                      {loading ? 'Salvando...' : 'Salvar Perfil Manualmente'}
+                    </button>
+                  </div>
+                </form>
               </div>
-            </form>
+            </div>
           )}
         </div>
       </div>
