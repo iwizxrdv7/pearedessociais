@@ -21,6 +21,8 @@ interface ConnectAccountModalProps {
 export function ConnectAccountModal({ isOpen, onClose, onAccountAdded }: ConnectAccountModalProps) {
   const [tab, setTab] = useState<'oauth' | 'manual'>('oauth');
   const [loading, setLoading] = useState(false);
+  const [quickToken, setQuickToken] = useState('');
+  const [importLoading, setImportLoading] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     facebook_page_id: '',
@@ -44,9 +46,6 @@ export function ConnectAccountModal({ isOpen, onClose, onAccountAdded }: Connect
 
     window.open(authUrl, '_blank', 'width=600,height=700');
   };
-
-  const [quickToken, setQuickToken] = useState('');
-  const [importLoading, setImportLoading] = useState(false);
 
   const handleQuickTokenImport = async (e: React.FormEvent) => {
     e.preventDefault();
