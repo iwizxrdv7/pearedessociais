@@ -7,6 +7,7 @@ const PUBLIC_PATHS = [
   '/api/auth/register',
   '/api/auth/logout',
   '/api/health',
+  '/api/cron',
 ];
 
 export function middleware(request: NextRequest) {

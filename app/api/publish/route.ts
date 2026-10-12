@@ -21,10 +21,11 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Perfil de rede social não encontrado.' }, { status: 404 });
     }
 
-    // Identificar caminho do vídeo local ou storage
     let videoFilePath = post.video_url;
-    if (!fs.existsSync(videoFilePath)) {
-      // Tentar resolver na pasta de fila do perfil no sistema
+    const isRemote = videoFilePath && (videoFilePath.startsWith('http://') || videoFilePath.startsWith('https://'));
+
+    if (!isRemote && !fs.existsSync(videoFilePath)) {
+      // Tentar resolver na pasta de fila local caso exista no host
       const profileFolder = path.join(process.cwd(), '..', 'Perfis', account.name, '2_Fila_Para_Postar', post.video_filename);
       if (fs.existsSync(profileFolder)) {
         videoFilePath = profileFolder;
@@ -66,12 +67,13 @@ export async function POST(req: Request) {
     }
 
     // Atualizar status do post
-    const hasSuccess = results.facebook || results.instagram;
+    const hasSuccess = !!(results.facebook || results.instagram);
     if (hasSuccess) {
       post.status = scheduleTimestamp ? 'scheduled' : 'published';
       post.published_at = scheduleTimestamp ? undefined : new Date().toISOString();
       post.meta_video_id = results.facebook?.videoId;
       post.meta_media_id = results.instagram?.mediaId;
+      post.error_message = undefined;
     } else {
       post.status = 'failed';
       post.error_message = results.facebook_error || results.instagram_error || 'Falha ao publicar na API.';

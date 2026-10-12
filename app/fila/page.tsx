@@ -26,6 +26,10 @@ export default function FilaPage() {
 
   const fetchData = async () => {
     try {
+      try {
+        await fetch('/api/cron');
+      } catch (e) {}
+
       const [accRes, postRes] = await Promise.all([
         fetch('/api/accounts'),
         fetch('/api/posts'),

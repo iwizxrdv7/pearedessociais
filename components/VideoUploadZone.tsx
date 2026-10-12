@@ -67,8 +67,33 @@ export function VideoUploadZone({ accounts, selectedAccountId, onPostCreated }: 
     setSuccessMsg(null);
 
     try {
-      for (const file of files) {
-        // Criar registro do post
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        setSuccessMsg(`Enviando ${file.name} para o armazenamento na nuvem (${i + 1}/${files.length})...`);
+
+        // 1. Obter URL assinada de upload no Supabase
+        const urlReq = await fetch('/api/media/upload-url', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ filename: file.name }),
+        });
+        const urlData = await urlReq.json();
+        if (!urlReq.ok || !urlData.signedUrl) {
+          throw new Error(urlData.error || 'Falha ao gerar link de upload seguro na nuvem.');
+        }
+
+        // 2. Enviar arquivo diretamente do navegador para o Supabase Storage
+        const uploadRes = await fetch(urlData.signedUrl, {
+          method: 'PUT',
+          headers: { 'Content-Type': file.type || 'video/mp4' },
+          body: file,
+        });
+
+        if (!uploadRes.ok) {
+          throw new Error(`Erro ao transferir vídeo para a nuvem (HTTP ${uploadRes.status}).`);
+        }
+
+        // 3. Criar registro do post com a URL pública oficial
         const postRes = await fetch('/api/posts', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -77,7 +102,7 @@ export function VideoUploadZone({ accounts, selectedAccountId, onPostCreated }: 
             title: file.name.replace(/\.[^/.]+$/, ''),
             caption: caption || activeAccount.default_caption || '',
             hashtags: hashtags ? hashtags.split(' ').map((h) => h.replace('#', '')) : [],
-            video_url: file.name, // Local filename
+            video_url: urlData.publicUrl,
             video_filename: file.name,
             file_size_mb: Number((file.size / (1024 * 1024)).toFixed(2)),
             status: publishNow ? 'processing' : 'scheduled',
@@ -86,20 +111,28 @@ export function VideoUploadZone({ accounts, selectedAccountId, onPostCreated }: 
         });
 
         const postData = await postRes.json();
+        if (!postRes.ok) {
+          throw new Error(postData.error || 'Erro ao registrar agendamento.');
+        }
 
-        // Se o usuário clicou em Publicar Agora
+        // 4. Se o usuário clicou em Publicar Agora, disparar imediatamente
         if (publishNow && postData.post?.id) {
-          await fetch('/api/publish', {
+          setSuccessMsg(`Publicando ${file.name} no Instagram e Facebook via API...`);
+          const pubRes = await fetch('/api/publish', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ postId: postData.post.id }),
           });
+          const pubData = await pubRes.json();
+          if (!pubData.success) {
+            throw new Error(`Erro ao publicar: ${pubData.post?.error_message || 'Falha na API da Meta.'}`);
+          }
         }
       }
 
       setSuccessMsg(
         publishNow
-          ? 'Vídeo enviado para processamento e publicação na API!'
+          ? 'Vídeo publicado com sucesso no Instagram/Facebook!'
           : `${files.length} vídeo(s) agendado(s) com sucesso na grade!`
       );
       setFiles([]);
