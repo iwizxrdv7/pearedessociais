@@ -117,16 +117,28 @@ export default function HistoricoPage() {
                         <p className="text-xs text-rose-400 mt-1 font-mono">{post.error_message}</p>
                       )}
 
-                      <div className="flex items-center gap-4 mt-2 text-[11px] text-gray-500">
-                        <span className="text-indigo-400 font-medium">{post.account_name}</span>
+                      <div className="flex flex-wrap items-center gap-3 mt-2.5 text-[11px] text-gray-400">
+                        <span className="text-indigo-400 font-semibold">{post.account_name}</span>
                         {post.published_at && (
-                          <span>Publicado em: {new Date(post.published_at).toLocaleString('pt-BR')}</span>
+                          <span>• {new Date(post.published_at).toLocaleString('pt-BR')}</span>
                         )}
                         {post.meta_video_id && (
-                          <span className="font-mono">Facebook ID: {post.meta_video_id}</span>
+                          <a
+                            href={`https://www.facebook.com/reel/${post.meta_video_id}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-blue-600/10 text-blue-400 hover:bg-blue-600/20 border border-blue-500/20 transition font-medium"
+                          >
+                            <Facebook className="w-3 h-3" />
+                            Ver no Facebook
+                            <ExternalLink className="w-2.5 h-2.5" />
+                          </a>
                         )}
                         {post.meta_media_id && (
-                          <span className="font-mono">Instagram ID: {post.meta_media_id}</span>
+                          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-pink-600/10 text-pink-400 border border-pink-500/20 font-medium">
+                            <Instagram className="w-3 h-3" />
+                            Publicado no Instagram
+                          </span>
                         )}
                       </div>
                     </div>
