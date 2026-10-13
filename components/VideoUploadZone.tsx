@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   UploadCloud,
   Film,
@@ -21,16 +21,37 @@ interface VideoUploadZoneProps {
   onPostCreated: () => void;
 }
 
+function getNowDateStr(): string {
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = String(now.getMonth() + 1).padStart(2, '0');
+  const d = String(now.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+function getNowTimeStr(): string {
+  const now = new Date();
+  const hh = String(now.getHours()).padStart(2, '0');
+  const mm = String(now.getMinutes()).padStart(2, '0');
+  return `${hh}:${mm}`;
+}
+
 export function VideoUploadZone({ accounts, selectedAccountId, onPostCreated }: VideoUploadZoneProps) {
   const [files, setFiles] = useState<File[]>([]);
   const [caption, setCaption] = useState('');
   const [hashtags, setHashtags] = useState('');
   const [scheduleDate, setScheduleDate] = useState('');
-  const [scheduleTime, setScheduleTime] = useState('18:00');
+  const [scheduleTime, setScheduleTime] = useState('');
   const [isUploading, setIsUploading] = useState(false);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Sempre deixar pré-setado a data atual com o horário atual
+  useEffect(() => {
+    setScheduleDate(getNowDateStr());
+    setScheduleTime(getNowTimeStr());
+  }, []);
 
   const activeAccount = accounts.find((a) => a.id === selectedAccountId) || accounts[0];
 
@@ -106,7 +127,16 @@ export function VideoUploadZone({ accounts, selectedAccountId, onPostCreated }: 
             video_filename: file.name,
             file_size_mb: Number((file.size / (1024 * 1024)).toFixed(2)),
             status: publishNow ? 'processing' : 'scheduled',
-            scheduled_for: publishNow ? new Date().toISOString() : `${scheduleDate}T${scheduleTime}:00`,
+            scheduled_for: publishNow
+              ? new Date().toISOString()
+              : (() => {
+                  const dateVal = scheduleDate || getNowDateStr();
+                  const timeVal = scheduleTime || getNowTimeStr();
+                  const [year, month, day] = dateVal.split('-').map(Number);
+                  const [hours, minutes] = timeVal.split(':').map(Number);
+                  const localDate = new Date(year, month - 1, day, hours, minutes, 0);
+                  return localDate.toISOString();
+                })(),
           }),
         });
 
@@ -167,6 +197,8 @@ export function VideoUploadZone({ accounts, selectedAccountId, onPostCreated }: 
           : `${files.length} vídeo(s) agendado(s) com sucesso na grade!`
       );
       setFiles([]);
+      setScheduleDate(getNowDateStr());
+      setScheduleTime(getNowTimeStr());
       onPostCreated();
     } catch (err: any) {
       setErrorMsg(err.message || 'Erro ao processar envio.');
