@@ -37,6 +37,10 @@ export default function DashboardPage() {
 
   const fetchPosts = async () => {
     try {
+      try {
+        await fetch('/api/cron');
+      } catch (e) {}
+
       const postRes = await fetch('/api/posts');
       const postData = await postRes.json();
       if (Array.isArray(postData)) {
