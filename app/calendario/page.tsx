@@ -4,28 +4,21 @@ import React, { useState, useEffect } from 'react';
 import { Header } from '@/components/Header';
 import { CalendarView } from '@/components/CalendarView';
 import { SocialAccount, VideoPost } from '@/lib/types';
+import { useAccount } from '@/context/AccountContext';
 import { Calendar, Clock, Sparkles, Filter, Instagram, Facebook } from 'lucide-react';
 
 export default function CalendarioPage() {
-  const [accounts, setAccounts] = useState<SocialAccount[]>([]);
+  const {
+    accounts,
+    selectedAccountId,
+    setSelectedAccountId,
+  } = useAccount();
   const [posts, setPosts] = useState<VideoPost[]>([]);
-  const [selectedAccountId, setSelectedAccountId] = useState<string>('');
 
-  const fetchData = async () => {
+  const fetchPosts = async () => {
     try {
-      const [accRes, postRes] = await Promise.all([
-        fetch('/api/accounts'),
-        fetch('/api/posts'),
-      ]);
-      const accData = await accRes.json();
+      const postRes = await fetch('/api/posts');
       const postData = await postRes.json();
-
-      if (Array.isArray(accData)) {
-        setAccounts(accData);
-        if (!selectedAccountId && accData.length > 0) {
-          setSelectedAccountId(accData[0].id);
-        }
-      }
       if (Array.isArray(postData)) {
         setPosts(postData);
       }
@@ -35,7 +28,7 @@ export default function CalendarioPage() {
   };
 
   useEffect(() => {
-    fetchData();
+    fetchPosts();
   }, []);
 
   return (

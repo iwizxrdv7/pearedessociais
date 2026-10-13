@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { Header } from '@/components/Header';
 import { SocialAccount, VideoPost } from '@/lib/types';
+import { useAccount } from '@/context/AccountContext';
 import {
   History,
   CheckCircle2,
@@ -17,8 +18,8 @@ import {
 } from 'lucide-react';
 
 export default function HistoricoPage() {
+  const { selectedAccountId, setSelectedAccountId } = useAccount();
   const [posts, setPosts] = useState<VideoPost[]>([]);
-  const [selectedAccountId, setSelectedAccountId] = useState<string>('');
 
   const fetchPosts = async () => {
     try {

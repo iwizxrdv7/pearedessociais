@@ -5,6 +5,7 @@ import { Header } from '@/components/Header';
 import { AccountCard } from '@/components/AccountCard';
 import { ConnectAccountModal } from '@/components/ConnectAccountModal';
 import { SocialAccount } from '@/lib/types';
+import { useAccount } from '@/context/AccountContext';
 import {
   Users2,
   PlusCircle,
@@ -18,26 +19,11 @@ import {
 } from 'lucide-react';
 
 export default function ContasPage() {
-  const [accounts, setAccounts] = useState<SocialAccount[]>([]);
+  const { accounts, reloadAccounts, loading } = useAccount();
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [loading, setLoading] = useState(true);
   const [syncingId, setSyncingId] = useState<string | null>(null);
   const [importing, setImporting] = useState(false);
   const [feedbackMsg, setFeedbackMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
-
-  const fetchAccounts = async () => {
-    try {
-      const res = await fetch('/api/accounts');
-      const data = await res.json();
-      if (Array.isArray(data)) {
-        setAccounts(data);
-      }
-    } catch (err) {
-      console.error('Erro ao buscar contas:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleImportToken = async (token: string) => {
     setImporting(true);
@@ -55,7 +41,7 @@ export default function ContasPage() {
         type: 'success',
         text: `Sucesso! ${data.importedCount || 1} perfil(is) importado(s) e conectado(s) com sucesso!`,
       });
-      await fetchAccounts();
+      await reloadAccounts();
     } catch (err: any) {
       setFeedbackMsg({ type: 'error', text: err.message || 'Erro ao importar perfis.' });
     } finally {
@@ -64,7 +50,7 @@ export default function ContasPage() {
   };
 
   useEffect(() => {
-    fetchAccounts();
+    reloadAccounts();
 
     // 1. Detectar token no hash da URL (#access_token=...) caso ocorra redirect
     if (typeof window !== 'undefined' && window.location.hash.includes('access_token')) {
@@ -102,7 +88,7 @@ export default function ContasPage() {
       });
       const data = await res.json();
       if (data.success) {
-        fetchAccounts();
+        reloadAccounts();
       }
     } catch (err) {
       console.error('Erro ao sincronizar:', err);
@@ -117,7 +103,7 @@ export default function ContasPage() {
     try {
       const res = await fetch(`/api/accounts?id=${id}`, { method: 'DELETE' });
       if (res.ok) {
-        setAccounts((prev) => prev.filter((a) => a.id !== id));
+        await reloadAccounts();
       }
     } catch (err) {
       console.error('Erro ao deletar:', err);
@@ -229,7 +215,7 @@ export default function ContasPage() {
       <ConnectAccountModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        onAccountAdded={fetchAccounts}
+        onAccountAdded={reloadAccounts}
       />
     </main>
   );

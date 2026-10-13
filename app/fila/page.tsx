@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { Header } from '@/components/Header';
 import { VideoUploadZone } from '@/components/VideoUploadZone';
 import { SocialAccount, VideoPost } from '@/lib/types';
+import { useAccount } from '@/context/AccountContext';
 import {
   Layers,
   Clock,
@@ -19,30 +20,23 @@ import {
 } from 'lucide-react';
 
 export default function FilaPage() {
-  const [accounts, setAccounts] = useState<SocialAccount[]>([]);
+  const {
+    accounts,
+    selectedAccountId,
+    setSelectedAccountId,
+    reloadAccounts,
+  } = useAccount();
   const [posts, setPosts] = useState<VideoPost[]>([]);
-  const [selectedAccountId, setSelectedAccountId] = useState<string>('');
   const [publishingId, setPublishingId] = useState<string | null>(null);
 
-  const fetchData = async () => {
+  const fetchPosts = async () => {
     try {
       try {
         await fetch('/api/cron');
       } catch (e) {}
 
-      const [accRes, postRes] = await Promise.all([
-        fetch('/api/accounts'),
-        fetch('/api/posts'),
-      ]);
-      const accData = await accRes.json();
+      const postRes = await fetch('/api/posts');
       const postData = await postRes.json();
-
-      if (Array.isArray(accData)) {
-        setAccounts(accData);
-        if (!selectedAccountId && accData.length > 0) {
-          setSelectedAccountId(accData[0].id);
-        }
-      }
       if (Array.isArray(postData)) {
         setPosts(postData);
       }
@@ -51,8 +45,12 @@ export default function FilaPage() {
     }
   };
 
+  const fetchData = async () => {
+    await Promise.all([fetchPosts(), reloadAccounts()]);
+  };
+
   useEffect(() => {
-    fetchData();
+    fetchPosts();
   }, []);
 
   const handlePublishNow = async (postId: string) => {

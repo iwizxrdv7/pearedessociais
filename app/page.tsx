@@ -6,6 +6,7 @@ import { Header } from '@/components/Header';
 import { VideoUploadZone } from '@/components/VideoUploadZone';
 import { CalendarView } from '@/components/CalendarView';
 import { SocialAccount, VideoPost, DashboardStats } from '@/lib/types';
+import { useAccount } from '@/context/AccountContext';
 import {
   Sparkles,
   Users2,
@@ -24,26 +25,20 @@ import {
 } from 'lucide-react';
 
 export default function DashboardPage() {
-  const [accounts, setAccounts] = useState<SocialAccount[]>([]);
+  const {
+    accounts,
+    selectedAccountId,
+    setSelectedAccountId,
+    selectedAccount,
+    reloadAccounts,
+  } = useAccount();
   const [posts, setPosts] = useState<VideoPost[]>([]);
-  const [selectedAccountId, setSelectedAccountId] = useState<string>('');
   const [loading, setLoading] = useState(true);
 
-  const fetchData = async () => {
+  const fetchPosts = async () => {
     try {
-      const [accRes, postRes] = await Promise.all([
-        fetch('/api/accounts'),
-        fetch('/api/posts'),
-      ]);
-      const accData = await accRes.json();
+      const postRes = await fetch('/api/posts');
       const postData = await postRes.json();
-
-      if (Array.isArray(accData)) {
-        setAccounts(accData);
-        if (!selectedAccountId && accData.length > 0) {
-          setSelectedAccountId(accData[0].id);
-        }
-      }
       if (Array.isArray(postData)) {
         setPosts(postData);
       }
@@ -54,8 +49,12 @@ export default function DashboardPage() {
     }
   };
 
+  const fetchData = async () => {
+    await Promise.all([fetchPosts(), reloadAccounts()]);
+  };
+
   useEffect(() => {
-    fetchData();
+    fetchPosts();
   }, []);
 
   const stats: DashboardStats = {
@@ -67,7 +66,7 @@ export default function DashboardPage() {
     failed_posts: posts.filter((p) => p.status === 'failed').length,
   };
 
-  const activeAccount = accounts.find((a) => a.id === selectedAccountId) || accounts[0];
+  const activeAccount = selectedAccount || accounts[0];
 
   return (
     <main className="min-h-screen bg-[#0B0F19] pb-16">

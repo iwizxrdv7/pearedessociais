@@ -1,9 +1,10 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { SocialAccount } from '@/lib/types';
+import { useAccount } from '@/context/AccountContext';
 import {
   ChevronDown,
   PlusCircle,
@@ -18,7 +19,7 @@ interface HeaderProps {
   onSelectAccount?: (id: string) => void;
 }
 
-export function Header({ selectedAccountId, onSelectAccount }: HeaderProps) {
+export function Header({ selectedAccountId: propAccountId, onSelectAccount: propOnSelect }: HeaderProps = {}) {
   const pathname = usePathname();
   const router = useRouter();
 
@@ -27,32 +28,26 @@ export function Header({ selectedAccountId, onSelectAccount }: HeaderProps) {
     return null;
   }
 
-  const [accounts, setAccounts] = useState<SocialAccount[]>([]);
-  const [isOpen, setIsOpen] = useState(false);
-  const [activeAccount, setActiveAccount] = useState<SocialAccount | null>(null);
+  const {
+    accounts,
+    selectedAccountId: contextAccountId,
+    selectedAccount: contextActiveAccount,
+    setSelectedAccountId,
+  } = useAccount();
 
-  useEffect(() => {
-    fetch('/api/accounts')
-      .then((res) => res.json())
-      .then((data) => {
-        if (Array.isArray(data)) {
-          setAccounts(data);
-          if (selectedAccountId) {
-            const found = data.find((a) => a.id === selectedAccountId);
-            if (found) setActiveAccount(found);
-          } else if (data.length > 0) {
-            setActiveAccount(data[0]);
-            if (onSelectAccount) onSelectAccount(data[0].id);
-          }
-        }
-      })
-      .catch((err) => console.error('Erro ao carregar contas:', err));
-  }, [selectedAccountId]);
+  const [isOpen, setIsOpen] = useState(false);
+
+  const activeAccountId = propAccountId || contextAccountId;
+  const activeAccount =
+    accounts.find((a) => a.id === activeAccountId) ||
+    contextActiveAccount ||
+    accounts[0] ||
+    null;
 
   const handleSelect = (account: SocialAccount) => {
-    setActiveAccount(account);
+    setSelectedAccountId(account.id);
+    if (propOnSelect) propOnSelect(account.id);
     setIsOpen(false);
-    if (onSelectAccount) onSelectAccount(account.id);
   };
 
   const handleLogout = async () => {
