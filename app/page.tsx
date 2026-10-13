@@ -41,6 +41,23 @@ export default function DashboardPage() {
       const postData = await postRes.json();
       if (Array.isArray(postData)) {
         setPosts(postData);
+
+        // Se houver algum post em processamento na Meta, verificar e atualizar automaticamente
+        const processingPost = postData.find((p: VideoPost) => p.status === 'processing');
+        if (processingPost) {
+          fetch('/api/publish', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ postId: processingPost.id }),
+          })
+            .then((r) => r.json())
+            .then((updated) => {
+              if (updated?.post && updated.status !== 'processing') {
+                setPosts((prev) => prev.map((p) => (p.id === updated.post.id ? updated.post : p)));
+              }
+            })
+            .catch(() => {});
+        }
       }
     } catch (err) {
       console.error('Erro ao carregar dados do dashboard:', err);

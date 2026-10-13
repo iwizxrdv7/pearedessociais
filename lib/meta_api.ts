@@ -200,11 +200,11 @@ export class MetaAPIClient {
       }
     }
 
-    // 3. Aguardar processamento da Meta
+    // 3. Aguardar processamento da Meta com timeout ágil para evitar estourar o limite de função do servidor
     let isReady = false;
-    const maxAttempts = 36; // 3 minutos
-    for (let i = 0; i < maxAttempts; i++) {
-      await new Promise((r) => setTimeout(r, 4000));
+    const maxInitialChecks = 4; // 4 checagens a cada 2.5s = ~10s
+    for (let i = 0; i < maxInitialChecks; i++) {
+      await new Promise((r) => setTimeout(r, 2500));
       const statusRes = await fetch(`https://graph.facebook.com/v20.0/${containerId}?fields=status_code,status&access_token=${pageToken}`);
       const statusData = await statusRes.json();
       
@@ -217,8 +217,12 @@ export class MetaAPIClient {
       }
     }
 
+    // Se ainda está processando na Meta, não trave a requisição HTTP do servidor: retorne 'processing'
     if (!isReady) {
-      throw new Error("Tempo limite de processamento de vídeo no Instagram esgotado.");
+      return {
+        containerId,
+        status: 'processing',
+      };
     }
 
     // 4. Se agendado, container pronto
@@ -245,6 +249,38 @@ export class MetaAPIClient {
       containerId,
       status: 'published',
     };
+  }
+
+  /**
+   * Checa o status de processamento de um container de Reel no Instagram
+   */
+  static async checkInstagramContainerStatus(containerId: string, pageToken: string): Promise<{ statusCode: string; status: string; data: any }> {
+    const res = await fetch(`https://graph.facebook.com/v20.0/${containerId}?fields=status_code,status&access_token=${pageToken}`);
+    const data = await res.json();
+    return {
+      statusCode: data.status_code || '',
+      status: data.status || '',
+      data,
+    };
+  }
+
+  /**
+   * Publica um container que já concluiu o processamento na Meta
+   */
+  static async publishInstagramContainer(igAccountId: string, containerId: string, pageToken: string): Promise<{ mediaId: string }> {
+    const publishRes = await fetch(`https://graph.facebook.com/v20.0/${igAccountId}/media_publish`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        creation_id: containerId,
+        access_token: pageToken,
+      }),
+    });
+    const publishData = await publishRes.json();
+    if (!publishData.id) {
+      throw new Error(`Erro ao publicar Reel no Instagram: ${JSON.stringify(publishData)}`);
+    }
+    return { mediaId: publishData.id };
   }
 
   /**

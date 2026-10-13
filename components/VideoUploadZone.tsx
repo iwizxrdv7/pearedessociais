@@ -106,7 +106,7 @@ export function VideoUploadZone({ accounts, selectedAccountId, onPostCreated }: 
             video_filename: file.name,
             file_size_mb: Number((file.size / (1024 * 1024)).toFixed(2)),
             status: publishNow ? 'processing' : 'scheduled',
-            scheduled_for: publishNow ? undefined : `${scheduleDate}T${scheduleTime}:00`,
+            scheduled_for: publishNow ? new Date().toISOString() : `${scheduleDate}T${scheduleTime}:00`,
           }),
         });
 
@@ -124,8 +124,39 @@ export function VideoUploadZone({ accounts, selectedAccountId, onPostCreated }: 
             body: JSON.stringify({ postId: postData.post.id }),
           });
           const pubData = await pubRes.json();
-          if (!pubData.success) {
-            throw new Error(`Erro ao publicar: ${pubData.post?.error_message || 'Falha na API da Meta.'}`);
+          if (!pubData.success && pubData.status !== 'processing') {
+            throw new Error(`Erro ao publicar: ${pubData.error || pubData.post?.error_message || 'Falha na API da Meta.'}`);
+          }
+
+          // Se a Meta estiver codificando o vídeo no Instagram, aguardar com checagem suave
+          if (pubData.status === 'processing') {
+            setSuccessMsg(`Vídeo enviado para a Meta! Finalizando codificação do Reel...`);
+            let isDone = false;
+            let attempts = 0;
+            const maxPoll = 25; // até ~75s
+
+            while (!isDone && attempts < maxPoll) {
+              await new Promise((r) => setTimeout(r, 3000));
+              attempts++;
+              try {
+                const pollRes = await fetch('/api/publish', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ postId: postData.post.id }),
+                });
+                const pollData = await pollRes.json();
+                if (pollData.status === 'published') {
+                  isDone = true;
+                  break;
+                } else if (pollData.status === 'failed') {
+                  throw new Error(pollData.error || 'Falha no processamento do vídeo na Meta.');
+                } else {
+                  setSuccessMsg(`Aguardando Meta finalizar codificação do Reel (${attempts * 3}s)...`);
+                }
+              } catch (pollErr: any) {
+                console.warn('Aguardando Meta processar:', pollErr);
+              }
+            }
           }
         }
       }

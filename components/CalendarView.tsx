@@ -11,6 +11,8 @@ import {
   Film,
   Sparkles,
   CheckCircle2,
+  AlertCircle,
+  RefreshCw,
   Calendar as CalendarIcon
 } from 'lucide-react';
 
@@ -54,6 +56,17 @@ export function CalendarView({ posts, accounts, selectedAccountId }: CalendarVie
 
   const dayNames = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'];
 
+  const getPostDateStr = (p: VideoPost) => {
+    const raw = p.scheduled_for || p.published_at || p.created_at;
+    if (!raw) return '';
+    const d = new Date(raw);
+    if (isNaN(d.getTime())) return raw.split('T')[0] || '';
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const dayNum = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${dayNum}`;
+  };
+
   return (
     <div className="bg-gray-900 border border-gray-800 rounded-3xl p-6 shadow-xl">
       {/* Header */}
@@ -64,7 +77,7 @@ export function CalendarView({ posts, accounts, selectedAccountId }: CalendarVie
           </div>
           <div>
             <h2 className="text-lg font-bold text-white">Grade Semanal de Agendamento</h2>
-            <p className="text-xs text-gray-400">Distribuição visual das postagens programadas</p>
+            <p className="text-xs text-gray-400">Distribuição visual das postagens programadas e publicadas</p>
           </div>
         </div>
 
@@ -72,6 +85,7 @@ export function CalendarView({ posts, accounts, selectedAccountId }: CalendarVie
           <button
             onClick={prevWeek}
             className="p-2 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-xl transition"
+            title="Semana anterior"
           >
             <ChevronLeft className="w-4 h-4" />
           </button>
@@ -82,6 +96,7 @@ export function CalendarView({ posts, accounts, selectedAccountId }: CalendarVie
           <button
             onClick={nextWeek}
             className="p-2 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-xl transition"
+            title="Próxima semana"
           >
             <ChevronRight className="w-4 h-4" />
           </button>
@@ -91,14 +106,17 @@ export function CalendarView({ posts, accounts, selectedAccountId }: CalendarVie
       {/* Week Grid */}
       <div className="grid grid-cols-7 gap-3">
         {weekDays.map((day, idx) => {
-          const dateStr = day.toISOString().split('T')[0];
-          const isToday = new Date().toISOString().split('T')[0] === dateStr;
-          
-          // Posts deste dia
-          const dayPosts = filteredPosts.filter((p) => {
-            if (!p.scheduled_for) return false;
-            return p.scheduled_for.startsWith(dateStr);
-          });
+          const y = day.getFullYear();
+          const m = String(day.getMonth() + 1).padStart(2, '0');
+          const d = String(day.getDate()).padStart(2, '0');
+          const dateStr = `${y}-${m}-${d}`;
+
+          const todayObj = new Date();
+          const todayStr = `${todayObj.getFullYear()}-${String(todayObj.getMonth() + 1).padStart(2, '0')}-${String(todayObj.getDate()).padStart(2, '0')}`;
+          const isToday = todayStr === dateStr;
+
+          // Posts deste dia (seja agendado ou já publicado)
+          const dayPosts = filteredPosts.filter((p) => getPostDateStr(p) === dateStr);
 
           return (
             <div
@@ -131,30 +149,71 @@ export function CalendarView({ posts, accounts, selectedAccountId }: CalendarVie
                       Sem posts
                     </div>
                   ) : (
-                    dayPosts.map((post) => (
-                      <div
-                        key={post.id}
-                        className="bg-gray-900 hover:bg-gray-850 border border-gray-800 hover:border-indigo-500/40 rounded-xl p-2 text-xs transition cursor-pointer shadow-sm group"
-                      >
-                        <div className="flex items-center justify-between mb-1">
-                          <span className="text-[10px] font-mono font-semibold text-indigo-400 flex items-center gap-1">
-                            <Clock className="w-2.5 h-2.5" />
-                            {post.scheduled_for?.split('T')[1]?.substring(0, 5) || '18:00'}
-                          </span>
-                          <span className="text-[9px] bg-emerald-500/10 text-emerald-400 px-1 py-0.2 rounded font-medium">
-                            Agendado
-                          </span>
+                    dayPosts.map((post) => {
+                      const postTime = (() => {
+                        const raw = post.scheduled_for || post.published_at || post.created_at;
+                        if (!raw) return '18:00';
+                        const pDate = new Date(raw);
+                        if (isNaN(pDate.getTime())) return raw.split('T')[1]?.substring(0, 5) || '18:00';
+                        return pDate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+                      })();
+
+                      return (
+                        <div
+                          key={post.id}
+                          className="bg-gray-900 hover:bg-gray-850 border border-gray-800 hover:border-indigo-500/40 rounded-xl p-2 text-xs transition cursor-pointer shadow-sm group"
+                        >
+                          <div className="flex items-center justify-between mb-1 gap-1">
+                            <span className="text-[10px] font-mono font-semibold text-indigo-400 flex items-center gap-1">
+                              <Clock className="w-2.5 h-2.5" />
+                              {postTime}
+                            </span>
+
+                            {post.status === 'published' ? (
+                              <span className="text-[9px] bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 px-1.5 py-0.5 rounded-full font-bold flex items-center gap-1">
+                                <CheckCircle2 className="w-2.5 h-2.5" />
+                                Publicado
+                              </span>
+                            ) : post.status === 'scheduled' ? (
+                              <span className="text-[9px] bg-indigo-500/15 text-indigo-400 border border-indigo-500/30 px-1.5 py-0.5 rounded-full font-medium flex items-center gap-1">
+                                <Clock className="w-2.5 h-2.5" />
+                                Agendado
+                              </span>
+                            ) : post.status === 'processing' ? (
+                              <span className="text-[9px] bg-amber-500/15 text-amber-400 border border-amber-500/30 px-1.5 py-0.5 rounded-full font-medium flex items-center gap-1">
+                                <RefreshCw className="w-2.5 h-2.5 animate-spin" />
+                                Postando
+                              </span>
+                            ) : (
+                              <span className="text-[9px] bg-rose-500/15 text-rose-400 border border-rose-500/30 px-1.5 py-0.5 rounded-full font-medium flex items-center gap-1">
+                                <AlertCircle className="w-2.5 h-2.5" />
+                                Falhou
+                              </span>
+                            )}
+                          </div>
+
+                          <div className="font-medium text-white truncate text-[11px] group-hover:text-indigo-300 transition" title={post.title}>
+                            {post.title}
+                          </div>
+
+                          <div className="flex items-center justify-between mt-1 text-gray-500 text-[10px]">
+                            <div className="flex items-center gap-1">
+                              {post.meta_media_id ? (
+                                <Instagram className="w-3 h-3 text-pink-400" />
+                              ) : (
+                                <Instagram className="w-3 h-3 text-gray-600" />
+                              )}
+                              {post.meta_video_id ? (
+                                <Facebook className="w-3 h-3 text-blue-400" />
+                              ) : (
+                                <Facebook className="w-3 h-3 text-gray-600" />
+                              )}
+                            </div>
+                            <span className="text-[9px] truncate max-w-[70px]">{post.account_name}</span>
+                          </div>
                         </div>
-                        <div className="font-medium text-white truncate text-[11px] group-hover:text-indigo-300 transition">
-                          {post.title}
-                        </div>
-                        <div className="flex items-center gap-1.5 mt-1 text-gray-500">
-                          <Instagram className="w-3 h-3 text-pink-400" />
-                          <Facebook className="w-3 h-3 text-blue-400" />
-                          <span className="text-[9px] truncate">{post.account_name}</span>
-                        </div>
-                      </div>
-                    ))
+                      );
+                    })
                   )}
                 </div>
               </div>
