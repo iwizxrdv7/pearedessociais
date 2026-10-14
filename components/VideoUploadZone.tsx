@@ -83,6 +83,18 @@ export function VideoUploadZone({ accounts, selectedAccountId, onPostCreated }: 
       return;
     }
 
+    const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50 MB (Limite Supabase Free)
+    const oversizedFiles = files.filter((f) => f.size > MAX_FILE_SIZE);
+    if (oversizedFiles.length > 0) {
+      const names = oversizedFiles
+        .map((f) => `"${f.name}" (${(f.size / (1024 * 1024)).toFixed(1)} MB)`)
+        .join(', ');
+      setErrorMsg(
+        `O vídeo ${names} ultrapassa o limite máximo de 50 MB do Supabase. Por favor, utilize arquivos com menos de 50 MB ou comprima o vídeo antes de enviar.`
+      );
+      return;
+    }
+
     setIsUploading(true);
     setErrorMsg(null);
     setSuccessMsg(null);
@@ -111,7 +123,16 @@ export function VideoUploadZone({ accounts, selectedAccountId, onPostCreated }: 
         });
 
         if (!uploadRes.ok) {
-          throw new Error(`Erro ao transferir vídeo para a nuvem (HTTP ${uploadRes.status}).`);
+          let errDetail = `HTTP ${uploadRes.status}`;
+          try {
+            const errJson = await uploadRes.json();
+            if (errJson?.code === 'EntityTooLarge' || errJson?.message?.includes('exceeded the maximum allowed size')) {
+              errDetail = `O arquivo possui ${(file.size / (1024 * 1024)).toFixed(1)} MB e ultrapassa o limite de 50 MB do Supabase. Comprima o vídeo para menos de 50 MB.`;
+            } else if (errJson?.message) {
+              errDetail = errJson.message;
+            }
+          } catch (_) {}
+          throw new Error(`Erro ao transferir vídeo para a nuvem: ${errDetail}`);
         }
 
         // 3. Criar registro do post com a URL pública oficial
@@ -268,7 +289,7 @@ export function VideoUploadZone({ accounts, selectedAccountId, onPostCreated }: 
               Clique ou arraste vídeos (.MP4, .MOV)
             </h3>
             <p className="text-xs text-gray-400">
-              Você pode selecionar vários arquivos de uma só vez
+              Você pode selecionar vários arquivos de uma só vez (máx. 50 MB por vídeo)
             </p>
           </div>
 
@@ -278,26 +299,37 @@ export function VideoUploadZone({ accounts, selectedAccountId, onPostCreated }: 
               <div className="text-[11px] font-bold uppercase tracking-wider text-gray-400 px-1">
                 Vídeos Selecionados ({files.length})
               </div>
-              {files.map((file, idx) => (
-                <div
-                  key={idx}
-                  className="bg-gray-950 border border-gray-800 rounded-xl p-2.5 flex items-center justify-between text-xs"
-                >
-                  <div className="flex items-center gap-2.5 truncate">
-                    <Film className="w-4 h-4 text-indigo-400 flex-shrink-0" />
-                    <span className="text-gray-200 truncate font-medium">{file.name}</span>
-                    <span className="text-[10px] text-gray-500 font-mono">
-                      {(file.size / (1024 * 1024)).toFixed(1)} MB
-                    </span>
-                  </div>
-                  <button
-                    onClick={() => handleRemoveFile(idx)}
-                    className="text-gray-500 hover:text-rose-400 p-1 rounded-md transition"
+              {files.map((file, idx) => {
+                const isOversized = file.size > 50 * 1024 * 1024;
+                return (
+                  <div
+                    key={idx}
+                    className={`bg-gray-950 border rounded-xl p-2.5 flex items-center justify-between text-xs transition ${
+                      isOversized ? 'border-rose-500/50 bg-rose-950/20' : 'border-gray-800'
+                    }`}
                   >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              ))}
+                    <div className="flex items-center gap-2.5 truncate">
+                      <Film className={`w-4 h-4 flex-shrink-0 ${isOversized ? 'text-rose-400' : 'text-indigo-400'}`} />
+                      <span className="text-gray-200 truncate font-medium">{file.name}</span>
+                      <span
+                        className={`text-[10px] font-mono px-1.5 py-0.5 rounded ${
+                          isOversized
+                            ? 'bg-rose-500/20 text-rose-300 font-bold border border-rose-500/30'
+                            : 'text-gray-500'
+                        }`}
+                      >
+                        {(file.size / (1024 * 1024)).toFixed(1)} MB {isOversized && '⚠️ Excede 50 MB'}
+                      </span>
+                    </div>
+                    <button
+                      onClick={() => handleRemoveFile(idx)}
+                      className="text-gray-500 hover:text-rose-400 p-1 rounded-md transition"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>
