@@ -25,6 +25,23 @@ export default function CalendarioPage() {
       const postData = await postRes.json();
       if (Array.isArray(postData)) {
         setPosts(postData);
+
+        // Se houver algum post em processamento na Meta, checar e atualizar automaticamente
+        const processingPost = postData.find((p: VideoPost) => p.status === 'processing');
+        if (processingPost) {
+          fetch('/api/publish', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ postId: processingPost.id }),
+          })
+            .then((r) => r.json())
+            .then((updated) => {
+              if (updated?.post && updated.status !== 'processing') {
+                setPosts((prev) => prev.map((p) => (p.id === updated.post.id ? updated.post : p)));
+              }
+            })
+            .catch(() => {});
+        }
       }
     } catch (err) {
       console.error('Erro ao buscar dados do calendário:', err);
@@ -33,6 +50,13 @@ export default function CalendarioPage() {
 
   useEffect(() => {
     fetchPosts();
+
+    // Se houver post em processamento, atualizar a cada 5s
+    const timer = setInterval(() => {
+      fetchPosts();
+    }, 6000);
+
+    return () => clearInterval(timer);
   }, []);
 
   return (
