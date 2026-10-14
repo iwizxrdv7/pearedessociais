@@ -11,9 +11,19 @@ import {
   CheckCircle2,
   AlertCircle,
   Clock,
-  Hash
+  Hash,
+  Plus,
+  X,
+  Smile,
+  Flame,
+  Check,
+  Instagram,
+  Facebook,
+  Layers,
+  ChevronRight,
+  Info
 } from 'lucide-react';
-import { SocialAccount, VideoPost } from '@/lib/types';
+import { SocialAccount } from '@/lib/types';
 
 interface VideoUploadZoneProps {
   accounts: SocialAccount[];
@@ -42,12 +52,19 @@ export function VideoUploadZone({ accounts, selectedAccountId, onPostCreated }: 
   const [hashtags, setHashtags] = useState('');
   const [scheduleDate, setScheduleDate] = useState('');
   const [scheduleTime, setScheduleTime] = useState('');
+  
+  // Grade de múltiplos horários automáticos
+  const [scheduleMode, setScheduleMode] = useState<'single' | 'batch_grid'>('batch_grid');
+  const [gridTimes, setGridTimes] = useState<string[]>(['12:00', '18:00']);
+  const [newTimeInput, setNewTimeInput] = useState('15:00');
+  const [selectedDays, setSelectedDays] = useState<number[]>([1, 2, 3, 4, 5, 6, 0]); // Seg a Dom (0=Dom, 1=Seg, etc.)
+
   const [isUploading, setIsUploading] = useState(false);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Sempre deixar pré-setado a data atual com o horário atual
+  // Pré-setar data atual e horário atual
   useEffect(() => {
     setScheduleDate(getNowDateStr());
     setScheduleTime(getNowTimeStr());
@@ -72,6 +89,109 @@ export function VideoUploadZone({ accounts, selectedAccountId, onPostCreated }: 
       if (activeAccount.default_hashtags) setHashtags(activeAccount.default_hashtags.join(' '));
     }
   };
+
+  const handleInsertEmoji = (emoji: string) => {
+    setCaption((prev) => prev + (prev ? ' ' : '') + emoji);
+  };
+
+  const handleInsertHashtagPreset = (tags: string) => {
+    setHashtags((prev) => {
+      const trimmed = prev.trim();
+      return trimmed ? `${trimmed} ${tags}` : tags;
+    });
+  };
+
+  const handleAddTimeSlot = () => {
+    if (!newTimeInput || gridTimes.includes(newTimeInput)) return;
+    setGridTimes((prev) => [...prev, newTimeInput].sort());
+  };
+
+  const handleRemoveTimeSlot = (timeToRemove: string) => {
+    if (gridTimes.length <= 1) return;
+    setGridTimes((prev) => prev.filter((t) => t !== timeToRemove));
+  };
+
+  const toggleDay = (dayIndex: number) => {
+    setSelectedDays((prev) =>
+      prev.includes(dayIndex)
+        ? prev.filter((d) => d !== dayIndex)
+        : [...prev, dayIndex]
+    );
+  };
+
+  /**
+   * Calcula a fila de datas e horários sequenciais para os vídeos selecionados
+   */
+  const calculateScheduleSlots = (count: number): Array<{ dateStr: string; timeStr: string; isoString: string }> => {
+    const slots: Array<{ dateStr: string; timeStr: string; isoString: string }> = [];
+    if (count === 0) return slots;
+
+    if (scheduleMode === 'single') {
+      const dateVal = scheduleDate || getNowDateStr();
+      const timeVal = scheduleTime || getNowTimeStr();
+      const [year, month, day] = dateVal.split('-').map(Number);
+      const [hours, minutes] = timeVal.split(':').map(Number);
+      const localDate = new Date(year, month - 1, day, hours, minutes, 0);
+
+      for (let i = 0; i < count; i++) {
+        slots.push({
+          dateStr: dateVal,
+          timeStr: timeVal,
+          isoString: localDate.toISOString(),
+        });
+      }
+      return slots;
+    }
+
+    // Modo Grade Sequencial (estilo SpeedPost)
+    const startDateVal = scheduleDate || getNowDateStr();
+    const [startYear, startMonth, startDay] = startDateVal.split('-').map(Number);
+    const cursorDate = new Date(startYear, startMonth - 1, startDay);
+    const sortedTimes = [...gridTimes].sort();
+
+    let assigned = 0;
+    let safetyDays = 0;
+
+    while (assigned < count && safetyDays < 180) {
+      const dayOfWeek = cursorDate.getDay(); // 0 = Domingo, 1 = Segunda, ...
+
+      if (selectedDays.includes(dayOfWeek)) {
+        for (const timeStr of sortedTimes) {
+          if (assigned >= count) break;
+
+          const [hours, minutes] = timeStr.split(':').map(Number);
+          const slotDate = new Date(
+            cursorDate.getFullYear(),
+            cursorDate.getMonth(),
+            cursorDate.getDate(),
+            hours,
+            minutes,
+            0
+          );
+
+          // Se for o dia inicial e o horário já tiver passado hoje, ainda assim agendamos para hoje ou próximo slot
+          const y = slotDate.getFullYear();
+          const m = String(slotDate.getMonth() + 1).padStart(2, '0');
+          const d = String(slotDate.getDate()).padStart(2, '0');
+
+          slots.push({
+            dateStr: `${d}/${m}`,
+            timeStr,
+            isoString: slotDate.toISOString(),
+          });
+          assigned++;
+        }
+      }
+
+      // Avançar para o próximo dia
+      cursorDate.setDate(cursorDate.getDate() + 1);
+      safetyDays++;
+    }
+
+    return slots;
+  };
+
+  const previewSlots = calculateScheduleSlots(files.length);
 
   const handleSubmit = async (publishNow: boolean = false) => {
     if (files.length === 0) {
@@ -98,6 +218,8 @@ export function VideoUploadZone({ accounts, selectedAccountId, onPostCreated }: 
     setIsUploading(true);
     setErrorMsg(null);
     setSuccessMsg(null);
+
+    const calculatedSlots = calculateScheduleSlots(files.length);
 
     try {
       for (let i = 0; i < files.length; i++) {
@@ -135,6 +257,11 @@ export function VideoUploadZone({ accounts, selectedAccountId, onPostCreated }: 
           throw new Error(`Erro ao transferir vídeo para a nuvem: ${errDetail}`);
         }
 
+        // Determinar horário agendado
+        const scheduledTimeIso = publishNow
+          ? new Date().toISOString()
+          : calculatedSlots[i]?.isoString || new Date().toISOString();
+
         // 3. Criar registro do post com a URL pública oficial
         const postRes = await fetch('/api/posts', {
           method: 'POST',
@@ -148,16 +275,7 @@ export function VideoUploadZone({ accounts, selectedAccountId, onPostCreated }: 
             video_filename: file.name,
             file_size_mb: Number((file.size / (1024 * 1024)).toFixed(2)),
             status: publishNow ? 'processing' : 'scheduled',
-            scheduled_for: publishNow
-              ? new Date().toISOString()
-              : (() => {
-                  const dateVal = scheduleDate || getNowDateStr();
-                  const timeVal = scheduleTime || getNowTimeStr();
-                  const [year, month, day] = dateVal.split('-').map(Number);
-                  const [hours, minutes] = timeVal.split(':').map(Number);
-                  const localDate = new Date(year, month - 1, day, hours, minutes, 0);
-                  return localDate.toISOString();
-                })(),
+            scheduled_for: scheduledTimeIso,
           }),
         });
 
@@ -214,8 +332,8 @@ export function VideoUploadZone({ accounts, selectedAccountId, onPostCreated }: 
 
       setSuccessMsg(
         publishNow
-          ? 'Vídeo publicado com sucesso no Instagram/Facebook!'
-          : `${files.length} vídeo(s) agendado(s) com sucesso na grade!`
+          ? 'Vídeo publicado com sucesso no Instagram e Facebook!'
+          : `${files.length} vídeo(s) distribuído(s) e agendado(s) com sucesso na grade!`
       );
       setFiles([]);
       setScheduleDate(getNowDateStr());
@@ -228,51 +346,78 @@ export function VideoUploadZone({ accounts, selectedAccountId, onPostCreated }: 
     }
   };
 
+  const daysLabels = [
+    { id: 1, label: 'Seg' },
+    { id: 2, label: 'Ter' },
+    { id: 3, label: 'Qua' },
+    { id: 4, label: 'Qui' },
+    { id: 5, label: 'Sex' },
+    { id: 6, label: 'Sáb' },
+    { id: 0, label: 'Dom' },
+  ];
+
   return (
     <div className="bg-gray-900 border border-gray-800 rounded-3xl p-6 shadow-xl">
-      <div className="flex items-center justify-between mb-6">
+      {/* Top Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6 pb-5 border-b border-gray-800">
         <div>
           <h2 className="text-lg font-bold text-white flex items-center gap-2">
             <UploadCloud className="w-5 h-5 text-indigo-400" />
-            Upload em Lote & Agendador
+            Upload em Lote & Agendador Inteligente
           </h2>
           <p className="text-xs text-gray-400">
-            Arraste vídeos para publicar no Instagram e Facebook via Meta API
+            Arraste múltiplos vídeos para agendar na grade ou disparar no Instagram e Facebook via Meta API
           </p>
         </div>
 
-        {activeAccount && (
-          <button
-            type="button"
-            onClick={handleApplyPreset}
-            className="text-xs bg-indigo-600/15 hover:bg-indigo-600/25 text-indigo-400 border border-indigo-500/30 px-3 py-1.5 rounded-xl transition flex items-center gap-1.5"
-          >
-            <Sparkles className="w-3.5 h-3.5" />
-            Usar Legenda Padrão ({activeAccount.name})
-          </button>
-        )}
+        {/* Selected Destinations Tag & Preset Action */}
+        <div className="flex items-center gap-2">
+          {activeAccount && (
+            <div className="flex items-center gap-1.5 bg-gray-950 px-3 py-1.5 rounded-xl border border-gray-800 text-xs">
+              <span className="text-gray-400">Destino:</span>
+              <span className="font-semibold text-white truncate max-w-[140px]">{activeAccount.name}</span>
+              <div className="flex items-center gap-1 ml-1 text-indigo-400">
+                <Instagram className="w-3.5 h-3.5 text-pink-400" />
+                <Facebook className="w-3.5 h-3.5 text-blue-400" />
+              </div>
+            </div>
+          )}
+
+          {activeAccount && (
+            <button
+              type="button"
+              onClick={handleApplyPreset}
+              className="text-xs bg-indigo-600/15 hover:bg-indigo-600/25 text-indigo-400 border border-indigo-500/30 px-3 py-1.5 rounded-xl transition flex items-center gap-1.5"
+            >
+              <Sparkles className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Legenda Padrão</span>
+            </button>
+          )}
+        </div>
       </div>
 
+      {/* Notifications */}
       {successMsg && (
-        <div className="mb-4 p-3.5 bg-emerald-500/10 border border-emerald-500/30 rounded-2xl flex items-center gap-2.5 text-xs text-emerald-400">
+        <div className="mb-4 p-3.5 bg-emerald-500/10 border border-emerald-500/30 rounded-2xl flex items-center gap-2.5 text-xs text-emerald-400 animate-in fade-in">
           <CheckCircle2 className="w-4 h-4 flex-shrink-0" />
           <span>{successMsg}</span>
         </div>
       )}
 
       {errorMsg && (
-        <div className="mb-4 p-3.5 bg-rose-500/10 border border-rose-500/30 rounded-2xl flex items-center gap-2.5 text-xs text-rose-400">
+        <div className="mb-4 p-3.5 bg-rose-500/10 border border-rose-500/30 rounded-2xl flex items-center gap-2.5 text-xs text-rose-400 animate-in fade-in">
           <AlertCircle className="w-4 h-4 flex-shrink-0" />
           <span>{errorMsg}</span>
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Left Column: Dropzone & Files */}
-        <div className="space-y-4">
+      {/* Main Form Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        {/* Left Column (5 cols): Dropzone & Selected Files */}
+        <div className="lg:col-span-5 space-y-4">
           <div
             onClick={() => fileInputRef.current?.click()}
-            className="border-2 border-dashed border-gray-700 hover:border-indigo-500 rounded-3xl p-8 text-center cursor-pointer transition-all bg-gray-950/40 hover:bg-gray-950/80 group"
+            className="border-2 border-dashed border-gray-700 hover:border-indigo-500 rounded-3xl p-6 text-center cursor-pointer transition-all bg-gray-950/40 hover:bg-gray-950/80 group"
           >
             <input
               ref={fileInputRef}
@@ -282,25 +427,29 @@ export function VideoUploadZone({ accounts, selectedAccountId, onPostCreated }: 
               className="hidden"
               onChange={handleFilesSelect}
             />
-            <div className="w-14 h-14 rounded-2xl bg-indigo-600/10 group-hover:bg-indigo-600/20 border border-indigo-500/20 flex items-center justify-center mx-auto mb-3 text-indigo-400 transition">
-              <Film className="w-7 h-7" />
+            <div className="w-12 h-12 rounded-2xl bg-indigo-600/10 group-hover:bg-indigo-600/20 border border-indigo-500/20 flex items-center justify-center mx-auto mb-2.5 text-indigo-400 transition">
+              <Film className="w-6 h-6" />
             </div>
-            <h3 className="text-sm font-semibold text-white mb-1">
+            <h3 className="text-xs font-semibold text-white mb-0.5">
               Clique ou arraste vídeos (.MP4, .MOV)
             </h3>
-            <p className="text-xs text-gray-400">
-              Você pode selecionar vários arquivos de uma só vez (máx. 50 MB por vídeo)
+            <p className="text-[11px] text-gray-400">
+              Você pode selecionar vários vídeos de uma vez (máx. 50 MB por vídeo)
             </p>
           </div>
 
-          {/* Selected Files List */}
+          {/* Selected Files List with Slots Preview */}
           {files.length > 0 && (
-            <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
-              <div className="text-[11px] font-bold uppercase tracking-wider text-gray-400 px-1">
-                Vídeos Selecionados ({files.length})
+            <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
+              <div className="text-[11px] font-bold uppercase tracking-wider text-gray-400 px-1 flex items-center justify-between">
+                <span>Vídeos Selecionados ({files.length})</span>
+                <span className="text-[10px] text-indigo-400 normal-case font-normal">
+                  {scheduleMode === 'batch_grid' ? 'Distribuídos na Grade' : 'Mesmo Horário'}
+                </span>
               </div>
               {files.map((file, idx) => {
                 const isOversized = file.size > 50 * 1024 * 1024;
+                const slot = previewSlots[idx];
                 return (
                   <div
                     key={idx}
@@ -308,18 +457,20 @@ export function VideoUploadZone({ accounts, selectedAccountId, onPostCreated }: 
                       isOversized ? 'border-rose-500/50 bg-rose-950/20' : 'border-gray-800'
                     }`}
                   >
-                    <div className="flex items-center gap-2.5 truncate">
+                    <div className="flex items-center gap-2.5 truncate flex-1 mr-2">
                       <Film className={`w-4 h-4 flex-shrink-0 ${isOversized ? 'text-rose-400' : 'text-indigo-400'}`} />
-                      <span className="text-gray-200 truncate font-medium">{file.name}</span>
-                      <span
-                        className={`text-[10px] font-mono px-1.5 py-0.5 rounded ${
-                          isOversized
-                            ? 'bg-rose-500/20 text-rose-300 font-bold border border-rose-500/30'
-                            : 'text-gray-500'
-                        }`}
-                      >
-                        {(file.size / (1024 * 1024)).toFixed(1)} MB {isOversized && '⚠️ Excede 50 MB'}
-                      </span>
+                      <div className="truncate flex-1">
+                        <div className="text-gray-200 truncate font-medium text-[11px]">{file.name}</div>
+                        <div className="flex items-center gap-2 text-[10px] text-gray-500">
+                          <span>{(file.size / (1024 * 1024)).toFixed(1)} MB</span>
+                          {slot && (
+                            <span className="text-indigo-400 bg-indigo-950/40 px-1.5 py-0.2 rounded border border-indigo-900/40 font-mono">
+                              📅 {slot.dateStr} às {slot.timeStr}
+                            </span>
+                          )}
+                          {isOversized && <span className="text-rose-400 font-bold">⚠️ Excede 50MB</span>}
+                        </div>
+                      </div>
                     </div>
                     <button
                       onClick={() => handleRemoveFile(idx)}
@@ -334,27 +485,51 @@ export function VideoUploadZone({ accounts, selectedAccountId, onPostCreated }: 
           )}
         </div>
 
-        {/* Right Column: Captions, Hashtags & Schedule */}
-        <div className="space-y-4">
+        {/* Right Column (7 cols): Captions, Schedule & Action Panel */}
+        <div className="lg:col-span-7 space-y-4">
+          {/* Legenda & Quick Actions */}
           <div>
-            <label className="block text-xs font-semibold text-gray-300 mb-1.5 flex items-center justify-between">
-              <span>Legenda da Postagem</span>
-              <span className="text-[10px] text-gray-500">{caption.length} caracteres</span>
-            </label>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="text-xs font-semibold text-gray-300">
+                Legenda da Postagem
+              </label>
+              <span className="text-[10px] text-gray-500 font-mono">{caption.length}/2200</span>
+            </div>
+
             <textarea
-              rows={4}
+              rows={3}
               placeholder="Digite a legenda que acompanhará o vídeo nos Reels..."
               value={caption}
               onChange={(e) => setCaption(e.target.value)}
               className="w-full bg-gray-950 border border-gray-800 rounded-2xl p-3 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-indigo-500 resize-none"
             />
+
+            {/* Quick Action Pills for Caption */}
+            <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
+              <span className="text-[10px] text-gray-500 flex items-center gap-1">
+                <Smile className="w-3 h-3" /> Emojis rápidos:
+              </span>
+              {['✨', '🔥', '👉', '💡', '💬', '🚀', '👇'].map((emoji) => (
+                <button
+                  key={emoji}
+                  type="button"
+                  onClick={() => handleInsertEmoji(emoji)}
+                  className="text-xs bg-gray-950 hover:bg-gray-800 border border-gray-800 px-1.5 py-0.5 rounded-md transition"
+                >
+                  {emoji}
+                </button>
+              ))}
+            </div>
           </div>
 
+          {/* Hashtags with Presets */}
           <div>
-            <label className="block text-xs font-semibold text-gray-300 mb-1.5 flex items-center gap-1.5">
-              <Hash className="w-3.5 h-3.5 text-indigo-400" />
-              Hashtags (separadas por espaço)
-            </label>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="text-xs font-semibold text-gray-300 flex items-center gap-1.5">
+                <Hash className="w-3.5 h-3.5 text-indigo-400" />
+                Hashtags
+              </label>
+            </div>
             <input
               type="text"
               placeholder="#viral #reels #brasil #dicas"
@@ -362,31 +537,169 @@ export function VideoUploadZone({ accounts, selectedAccountId, onPostCreated }: 
               onChange={(e) => setHashtags(e.target.value)}
               className="w-full bg-gray-950 border border-gray-800 rounded-xl px-3 py-2 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-indigo-500"
             />
+            {/* Quick Preset Hashtags */}
+            <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
+              <button
+                type="button"
+                onClick={() => handleInsertHashtagPreset('#reels #viral #explore #dicas #saude')}
+                className="text-[10px] bg-indigo-950/40 hover:bg-indigo-900/50 text-indigo-300 border border-indigo-800/40 px-2 py-0.5 rounded-md transition flex items-center gap-1"
+              >
+                <Flame className="w-2.5 h-2.5 text-amber-400" /> + Viral & Dicas
+              </button>
+              <button
+                type="button"
+                onClick={() => handleInsertHashtagPreset('#suplementos #qualidadedevida #bemestar #saudavel')}
+                className="text-[10px] bg-indigo-950/40 hover:bg-indigo-900/50 text-indigo-300 border border-indigo-800/40 px-2 py-0.5 rounded-md transition"
+              >
+                + Saúde & Suplementos
+              </button>
+            </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3 bg-gray-950/60 p-3.5 rounded-2xl border border-gray-800">
-            <div>
-              <label className="block text-[11px] font-semibold text-gray-400 mb-1 flex items-center gap-1">
-                <Calendar className="w-3 h-3" /> Data
-              </label>
-              <input
-                type="date"
-                value={scheduleDate}
-                onChange={(e) => setScheduleDate(e.target.value)}
-                className="w-full bg-gray-900 border border-gray-700 rounded-xl px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-indigo-500"
-              />
+          {/* Scheduling Configuration - SpeedPost Inspired */}
+          <div className="bg-gray-950/70 border border-gray-800 rounded-2xl p-4 space-y-3.5">
+            <div className="flex items-center justify-between pb-2 border-b border-gray-800/80">
+              <div className="flex items-center gap-2">
+                <Calendar className="w-4 h-4 text-indigo-400" />
+                <span className="text-xs font-semibold text-white">Configuração de Agendamento</span>
+              </div>
+
+              {/* Mode Toggle */}
+              <div className="flex items-center bg-gray-900 p-0.5 rounded-xl border border-gray-800 text-[11px]">
+                <button
+                  type="button"
+                  onClick={() => setScheduleMode('batch_grid')}
+                  className={`px-2.5 py-1 rounded-lg font-medium transition ${
+                    scheduleMode === 'batch_grid'
+                      ? 'bg-indigo-600 text-white shadow-sm'
+                      : 'text-gray-400 hover:text-white'
+                  }`}
+                >
+                  Grade Automática
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setScheduleMode('single')}
+                  className={`px-2.5 py-1 rounded-lg font-medium transition ${
+                    scheduleMode === 'single'
+                      ? 'bg-indigo-600 text-white shadow-sm'
+                      : 'text-gray-400 hover:text-white'
+                  }`}
+                >
+                  Horário Fixo
+                </button>
+              </div>
             </div>
-            <div>
-              <label className="block text-[11px] font-semibold text-gray-400 mb-1 flex items-center gap-1">
-                <Clock className="w-3 h-3" /> Horário
-              </label>
-              <input
-                type="time"
-                value={scheduleTime}
-                onChange={(e) => setScheduleTime(e.target.value)}
-                className="w-full bg-gray-900 border border-gray-700 rounded-xl px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-indigo-500 font-mono"
-              />
+
+            {/* Start Date */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-[11px] font-semibold text-gray-400 mb-1">
+                  Data de Início
+                </label>
+                <input
+                  type="date"
+                  value={scheduleDate}
+                  onChange={(e) => setScheduleDate(e.target.value)}
+                  className="w-full bg-gray-900 border border-gray-700 rounded-xl px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-indigo-500"
+                />
+              </div>
+
+              {scheduleMode === 'single' ? (
+                <div>
+                  <label className="block text-[11px] font-semibold text-gray-400 mb-1">
+                    Horário da Postagem
+                  </label>
+                  <input
+                    type="time"
+                    value={scheduleTime}
+                    onChange={(e) => setScheduleTime(e.target.value)}
+                    className="w-full bg-gray-900 border border-gray-700 rounded-xl px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-indigo-500 font-mono"
+                  />
+                </div>
+              ) : (
+                <div>
+                  <label className="block text-[11px] font-semibold text-gray-400 mb-1">
+                    Adicionar Horário na Grade
+                  </label>
+                  <div className="flex items-center gap-1.5">
+                    <input
+                      type="time"
+                      value={newTimeInput}
+                      onChange={(e) => setNewTimeInput(e.target.value)}
+                      className="bg-gray-900 border border-gray-700 rounded-xl px-2.5 py-1 text-xs text-white focus:outline-none focus:border-indigo-500 font-mono flex-1"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleAddTimeSlot}
+                      className="p-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl transition"
+                      title="Adicionar horário à grade"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
+
+            {/* Batch Grid Details (SpeedPost Style) */}
+            {scheduleMode === 'batch_grid' && (
+              <div className="space-y-3 pt-1">
+                {/* Time Slots List */}
+                <div>
+                  <div className="text-[10px] text-gray-400 mb-1.5 font-medium flex items-center justify-between">
+                    <span>Horários Diários ({gridTimes.length} disparos por dia):</span>
+                    <span className="text-[9px] text-gray-500">Vídeos serão distribuídos nesses slots</span>
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {gridTimes.map((t) => (
+                      <span
+                        key={t}
+                        className="bg-indigo-950/60 border border-indigo-700/50 text-indigo-300 text-xs px-2 py-0.5 rounded-lg flex items-center gap-1.5 font-mono"
+                      >
+                        <Clock className="w-3 h-3 text-indigo-400" />
+                        {t}
+                        {gridTimes.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveTimeSlot(t)}
+                            className="text-indigo-400 hover:text-rose-400 transition ml-0.5"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        )}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Days of Week Toggle (SpeedPost Feature) */}
+                <div>
+                  <div className="text-[10px] text-gray-400 mb-1.5 font-medium">
+                    Dias da semana para postar:
+                  </div>
+                  <div className="flex items-center gap-1">
+                    {daysLabels.map((d) => {
+                      const isActive = selectedDays.includes(d.id);
+                      return (
+                        <button
+                          key={d.id}
+                          type="button"
+                          onClick={() => toggleDay(d.id)}
+                          className={`flex-1 py-1 text-[10px] font-bold rounded-lg transition border ${
+                            isActive
+                              ? 'bg-indigo-600 border-indigo-500 text-white shadow-sm'
+                              : 'bg-gray-900 border-gray-800 text-gray-500 hover:text-gray-300'
+                          }`}
+                        >
+                          {d.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Action Buttons */}
@@ -394,10 +707,10 @@ export function VideoUploadZone({ accounts, selectedAccountId, onPostCreated }: 
             <button
               onClick={() => handleSubmit(false)}
               disabled={isUploading || files.length === 0}
-              className="py-3 px-4 bg-gray-800 hover:bg-gray-700 text-white font-semibold text-xs rounded-xl transition flex items-center justify-center gap-2 disabled:opacity-50 border border-gray-700"
+              className="py-3 px-4 bg-gray-800 hover:bg-gray-700 text-white font-semibold text-xs rounded-xl transition flex items-center justify-center gap-2 disabled:opacity-50 border border-gray-700 shadow-md"
             >
               <Calendar className="w-4 h-4 text-indigo-400" />
-              {isUploading ? 'Agendando...' : 'Agendar na Grade'}
+              {isUploading ? 'Agendando...' : files.length > 1 ? `Agendar ${files.length} na Grade` : 'Agendar na Grade'}
             </button>
 
             <button
