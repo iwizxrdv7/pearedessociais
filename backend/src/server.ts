@@ -6,6 +6,7 @@ import 'dotenv/config';
 import { supabase } from './services/supabase.js';
 import { MetaPublisherService } from './services/meta_publisher.js';
 import { initQueueSystem, scheduleReelJob, getQueueStatus, ReelScheduleJobData } from './services/queue.js';
+import { startAutonomousCloudScheduler, checkAndDispatchDuePosts } from './services/cron.js';
 
 const server = Fastify({
   logger: {
@@ -30,6 +31,9 @@ async function bootstrap() {
 
   // Inicializar motor de filas de agendamento (Redis / BullMQ)
   initQueueSystem();
+
+  // Inicializar motor de agendamento em nuvem autônomo (roda a cada 60s no Render)
+  startAutonomousCloudScheduler();
 
   // ----------------- ROTAS DA API -----------------
 
