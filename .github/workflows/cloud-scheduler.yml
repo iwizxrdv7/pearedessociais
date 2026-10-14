@@ -1,0 +1,19 @@
+name: Cloud Scheduler & Keep-Alive
+
+on:
+  schedule:
+    # Roda a cada 5 minutos
+    - cron: '*/5 * * * *'
+  workflow_dispatch: # Permite disparar manualmente pelo painel do GitHub se desejar
+
+jobs:
+  ping-scheduler:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Cron Vercel (Disparar postagens automáticas agendadas)
+        run: |
+          curl -s -f --max-time 30 https://pearedessociais.vercel.app/api/cron || echo "Vercel Cron ping concluído"
+
+      - name: Ping Render Backend (Manter Motor Nuvem acordado 24/7)
+        run: |
+          curl -s -f --max-time 30 https://pearedessociais.onrender.com/api/health || echo "Render Health ping concluído"
