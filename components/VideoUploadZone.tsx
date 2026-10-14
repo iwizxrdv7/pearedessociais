@@ -55,20 +55,61 @@ export function VideoUploadZone({ accounts, selectedAccountId, onPostCreated }: 
   
   // Grade de múltiplos horários automáticos
   const [scheduleMode, setScheduleMode] = useState<'single' | 'batch_grid'>('batch_grid');
-  const [gridTimes, setGridTimes] = useState<string[]>(['12:00', '18:00']);
-  const [newTimeInput, setNewTimeInput] = useState('15:00');
+  const [gridTimes, setGridTimes] = useState<string[]>(['18:00']);
+  const [newTimeInput, setNewTimeInput] = useState('12:00');
   const [selectedDays, setSelectedDays] = useState<number[]>([1, 2, 3, 4, 5, 6, 0]); // Seg a Dom (0=Dom, 1=Seg, etc.)
+  const [savedPresetMsg, setSavedPresetMsg] = useState(false);
 
   const [isUploading, setIsUploading] = useState(false);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Pré-setar data atual e horário atual
+  // Pré-setar data atual e carregar horários salvos do localStorage
   useEffect(() => {
     setScheduleDate(getNowDateStr());
     setScheduleTime(getNowTimeStr());
-  }, []);
+
+    try {
+      const storageKey = `pea_schedule_pref_${selectedAccountId || 'default'}`;
+      const saved = localStorage.getItem(storageKey) || localStorage.getItem('pea_schedule_pref_global');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed.gridTimes) && parsed.gridTimes.length > 0) {
+          setGridTimes(parsed.gridTimes);
+        }
+        if (Array.isArray(parsed.selectedDays) && parsed.selectedDays.length > 0) {
+          setSelectedDays(parsed.selectedDays);
+        }
+        if (parsed.scheduleMode) {
+          setScheduleMode(parsed.scheduleMode);
+        }
+        if (parsed.scheduleTime) {
+          setScheduleTime(parsed.scheduleTime);
+        }
+      }
+    } catch (e) {
+      console.warn('Erro ao carregar preferências de agendamento:', e);
+    }
+  }, [selectedAccountId]);
+
+  const handleSaveSchedulePreset = () => {
+    try {
+      const pref = {
+        gridTimes,
+        selectedDays,
+        scheduleMode,
+        scheduleTime,
+      };
+      const storageKey = `pea_schedule_pref_${selectedAccountId || 'default'}`;
+      localStorage.setItem(storageKey, JSON.stringify(pref));
+      localStorage.setItem('pea_schedule_pref_global', JSON.stringify(pref));
+      setSavedPresetMsg(true);
+      setTimeout(() => setSavedPresetMsg(false), 3000);
+    } catch (e) {
+      console.error('Erro ao salvar preferências:', e);
+    }
+  };
 
   const activeAccount = accounts.find((a) => a.id === selectedAccountId) || accounts[0];
 
@@ -558,10 +599,32 @@ export function VideoUploadZone({ accounts, selectedAccountId, onPostCreated }: 
 
           {/* Scheduling Configuration - SpeedPost Inspired */}
           <div className="bg-gray-950/70 border border-gray-800 rounded-2xl p-4 space-y-3.5">
-            <div className="flex items-center justify-between pb-2 border-b border-gray-800/80">
+            <div className="flex items-center justify-between pb-2 border-b border-gray-800/80 flex-wrap gap-2">
               <div className="flex items-center gap-2">
                 <Calendar className="w-4 h-4 text-indigo-400" />
                 <span className="text-xs font-semibold text-white">Configuração de Agendamento</span>
+                <button
+                  type="button"
+                  onClick={handleSaveSchedulePreset}
+                  className={`text-[10px] px-2 py-0.5 rounded-lg border transition flex items-center gap-1 ${
+                    savedPresetMsg
+                      ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40 font-bold'
+                      : 'bg-indigo-600/10 hover:bg-indigo-600/20 text-indigo-400 border-indigo-500/30'
+                  }`}
+                  title="Salvar esses horários e dias como padrão permanente"
+                >
+                  {savedPresetMsg ? (
+                    <>
+                      <Check className="w-3 h-3 text-emerald-400" />
+                      Salvo como Padrão!
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="w-3 h-3 text-indigo-400" />
+                      Salvar Padrão
+                    </>
+                  )}
+                </button>
               </div>
 
               {/* Mode Toggle */}
