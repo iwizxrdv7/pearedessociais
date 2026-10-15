@@ -111,7 +111,7 @@ export function CalendarView({ posts, accounts, selectedAccountId }: CalendarVie
       </div>
 
       {/* Week Grid */}
-      <div className="grid grid-cols-7 gap-3">
+      <div className="grid grid-cols-7 gap-2.5">
         {weekDays.map((day, idx) => {
           const y = day.getFullYear();
           const m = String(day.getMonth() + 1).padStart(2, '0');
@@ -128,7 +128,7 @@ export function CalendarView({ posts, accounts, selectedAccountId }: CalendarVie
           return (
             <div
               key={idx}
-              className={`rounded-2xl p-3 h-[480px] flex flex-col justify-between border transition-all ${
+              className={`rounded-2xl p-2.5 h-[500px] flex flex-col justify-between border transition-all ${
                 isToday
                   ? 'bg-indigo-950/30 border-indigo-500/60 ring-2 ring-indigo-500/40 shadow-lg shadow-indigo-950/50'
                   : 'bg-gray-950/60 border-gray-800/80 hover:border-gray-700'
@@ -137,12 +137,12 @@ export function CalendarView({ posts, accounts, selectedAccountId }: CalendarVie
               <div className="flex flex-col flex-1 overflow-hidden min-h-0">
                 {/* Day Header */}
                 <div className="flex items-center justify-between pb-2 mb-2 border-b border-gray-800 text-xs flex-shrink-0">
-                  <div className="flex items-center gap-1.5">
+                  <div className="flex items-center gap-1">
                     <span className={`font-bold ${isToday ? 'text-indigo-300' : 'text-gray-400'}`}>
                       {dayNames[idx]}
                     </span>
                     {isToday && (
-                      <span className="text-[8px] bg-indigo-500/30 text-indigo-300 font-extrabold px-1.5 py-0.5 rounded uppercase tracking-wider">
+                      <span className="text-[7.5px] bg-indigo-500/30 text-indigo-300 font-extrabold px-1 py-0.5 rounded uppercase tracking-wider">
                         Hoje
                       </span>
                     )}
@@ -177,31 +177,31 @@ export function CalendarView({ posts, accounts, selectedAccountId }: CalendarVie
                           key={post.id}
                           className="bg-gray-900 hover:bg-gray-850 border border-gray-800 hover:border-indigo-500/40 rounded-xl p-2 text-xs transition cursor-pointer shadow-sm group"
                         >
-                          <div className="flex items-center justify-between mb-1 gap-1">
-                            <span className="text-[10px] font-mono font-semibold text-indigo-400 flex items-center gap-1">
+                          <div className="flex items-center justify-between mb-1.5 gap-1">
+                            <span className="text-[10px] font-mono font-bold text-indigo-400 flex items-center gap-1 flex-shrink-0">
                               <Clock className="w-2.5 h-2.5" />
                               {postTime}
                             </span>
 
                             {post.status === 'published' ? (
-                              <span className="text-[9px] bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 px-1.5 py-0.5 rounded-full font-bold flex items-center gap-1">
+                              <span className="text-[8.5px] leading-none bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 px-1.5 py-1 rounded-md font-semibold flex items-center gap-0.5 flex-shrink-0">
                                 <CheckCircle2 className="w-2.5 h-2.5" />
-                                Publicado
+                                <span>Publicado</span>
                               </span>
                             ) : post.status === 'scheduled' ? (
-                              <span className="text-[9px] bg-indigo-500/15 text-indigo-400 border border-indigo-500/30 px-1.5 py-0.5 rounded-full font-medium flex items-center gap-1">
+                              <span className="text-[8.5px] leading-none bg-indigo-500/15 text-indigo-400 border border-indigo-500/30 px-1.5 py-1 rounded-md font-medium flex items-center gap-0.5 flex-shrink-0">
                                 <Clock className="w-2.5 h-2.5" />
-                                Agendado
+                                <span>Agendado</span>
                               </span>
                             ) : post.status === 'processing' ? (
-                              <span className="text-[9px] bg-amber-500/15 text-amber-400 border border-amber-500/30 px-1.5 py-0.5 rounded-full font-medium flex items-center gap-1">
+                              <span className="text-[8.5px] leading-none bg-amber-500/15 text-amber-400 border border-amber-500/30 px-1.5 py-1 rounded-md font-medium flex items-center gap-0.5 flex-shrink-0">
                                 <RefreshCw className="w-2.5 h-2.5 animate-spin" />
-                                Postando
+                                <span>Postando</span>
                               </span>
                             ) : (
-                              <span className="text-[9px] bg-rose-500/15 text-rose-400 border border-rose-500/30 px-1.5 py-0.5 rounded-full font-medium flex items-center gap-1">
+                              <span className="text-[8.5px] leading-none bg-rose-500/15 text-rose-400 border border-rose-500/30 px-1.5 py-1 rounded-md font-medium flex items-center gap-0.5 flex-shrink-0">
                                 <AlertCircle className="w-2.5 h-2.5" />
-                                Falhou
+                                <span>Falhou</span>
                               </span>
                             )}
                           </div>
