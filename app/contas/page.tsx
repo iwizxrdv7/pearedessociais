@@ -195,29 +195,29 @@ export default function ContasPage() {
             Array.from({ length: 3 }).map((_, i) => (
               <div
                 key={i}
-                className="bg-gray-900/60 border border-gray-800 rounded-3xl p-6 shadow-xl space-y-5 animate-pulse min-h-[300px] flex flex-col justify-between"
+                className="bg-gray-900/60 border border-gray-800/80 rounded-2xl p-6 shadow-xl space-y-5 animate-pulse min-h-[300px] flex flex-col justify-between"
               >
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                      <div className="w-12 h-12 rounded-2xl bg-gray-800"></div>
+                      <div className="w-12 h-12 rounded-2xl bg-gray-800/70"></div>
                       <div className="space-y-2">
-                        <div className="w-28 h-3.5 bg-gray-800 rounded"></div>
-                        <div className="w-16 h-2.5 bg-gray-800/60 rounded"></div>
+                        <div className="w-28 h-3.5 bg-gray-800/80 rounded"></div>
+                        <div className="w-16 h-2.5 bg-gray-800/50 rounded"></div>
                       </div>
                     </div>
-                    <div className="w-14 h-4 bg-emerald-500/10 rounded-full"></div>
+                    <div className="w-16 h-5 bg-emerald-500/10 rounded-full"></div>
                   </div>
 
-                  <div className="space-y-2 pt-2">
-                    <div className="w-full h-8 bg-gray-950/80 rounded-xl border border-gray-850"></div>
-                    <div className="w-full h-8 bg-gray-950/80 rounded-xl border border-gray-850"></div>
+                  <div className="space-y-2.5 pt-2">
+                    <div className="w-full h-8 bg-gray-950/60 rounded-xl"></div>
+                    <div className="w-full h-8 bg-gray-950/60 rounded-xl"></div>
                   </div>
                 </div>
 
                 <div className="pt-4 border-t border-gray-800/60 flex items-center justify-between">
                   <div className="w-20 h-3 bg-gray-800/70 rounded"></div>
-                  <div className="w-7 h-7 bg-gray-800 rounded-xl"></div>
+                  <div className="w-7 h-7 bg-gray-800/60 rounded-xl"></div>
                 </div>
               </div>
             ))
