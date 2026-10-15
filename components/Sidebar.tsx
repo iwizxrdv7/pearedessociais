@@ -103,26 +103,26 @@ export function Sidebar() {
       >
         <div className="overflow-y-auto overflow-x-hidden flex-1 py-1">
           {/* Logo & Brand Header */}
-          <div className="h-16 border-b border-gray-800/80 flex items-center justify-between px-3.5">
-            <Link href="/" className="flex items-center gap-3 overflow-hidden">
-              <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-indigo-600 to-purple-600 flex items-center justify-center shadow-md shadow-indigo-600/30 flex-shrink-0 transition-transform hover:scale-105">
-                <Zap className="w-5 h-5 text-white" />
-              </div>
-              {isExpanded && (
+          <div className={`h-16 border-b border-gray-800/80 flex items-center ${isExpanded ? 'justify-between px-3.5' : 'justify-center px-0'}`}>
+            {isExpanded && (
+              <Link href="/" className="flex items-center gap-3 overflow-hidden">
+                <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-indigo-600 to-purple-600 flex items-center justify-center shadow-md shadow-indigo-600/30 flex-shrink-0 transition-transform hover:scale-105">
+                  <Zap className="w-5 h-5 text-white" />
+                </div>
                 <div className="whitespace-nowrap overflow-hidden">
                   <div className="font-bold text-sm text-white tracking-tight flex items-center gap-1.5">
                     P&A <span className="text-[10px] bg-indigo-500/20 text-indigo-400 font-semibold px-1.5 py-0.5 rounded-full border border-indigo-500/30">PRO</span>
                   </div>
                   <div className="text-[10px] text-gray-400 font-medium">Postador & Downloads</div>
                 </div>
-              )}
-            </Link>
+              </Link>
+            )}
 
-            {/* Botão de minimizar/expandir sem jitter */}
+            {/* Botão de minimizar/expandir sem sobreposição */}
             <button
               onClick={toggleSidebar}
               title={isExpanded ? 'Recolher menu' : 'Expandir menu'}
-              className="w-7 h-7 rounded-lg bg-gray-900 border border-gray-800 hover:bg-gray-800 text-gray-400 hover:text-white flex items-center justify-center transition"
+              className="w-8 h-8 rounded-lg bg-gray-900 border border-gray-800 hover:bg-gray-800 text-gray-400 hover:text-white flex items-center justify-center transition flex-shrink-0"
             >
               {isExpanded ? <ChevronLeft className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
             </button>
