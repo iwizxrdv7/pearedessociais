@@ -22,7 +22,6 @@ import {
 
 const MAIN_MENU = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard },
-  { name: 'Calendário & Grade', href: '/calendario', icon: Calendar },
   { name: 'Fila & Agendador', href: '/fila', icon: Layers },
 ];
 
