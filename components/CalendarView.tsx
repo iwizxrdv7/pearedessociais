@@ -83,6 +83,13 @@ export function CalendarView({ posts, accounts, selectedAccountId }: CalendarVie
 
         <div className="flex items-center gap-2">
           <button
+            onClick={() => setCurrentDate(new Date())}
+            className="px-2.5 py-1.5 bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-400 border border-indigo-500/30 text-xs font-semibold rounded-xl transition"
+            title="Ir para a semana atual"
+          >
+            Hoje
+          </button>
+          <button
             onClick={prevWeek}
             className="p-2 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-xl transition"
             title="Semana anterior"
@@ -121,32 +128,39 @@ export function CalendarView({ posts, accounts, selectedAccountId }: CalendarVie
           return (
             <div
               key={idx}
-              className={`rounded-2xl p-3 min-h-[280px] flex flex-col justify-between border transition-all ${
+              className={`rounded-2xl p-3 h-[480px] flex flex-col justify-between border transition-all ${
                 isToday
-                  ? 'bg-indigo-950/20 border-indigo-500/40 ring-1 ring-indigo-500/30'
-                  : 'bg-gray-950/60 border-gray-800/80'
+                  ? 'bg-indigo-950/30 border-indigo-500/60 ring-2 ring-indigo-500/40 shadow-lg shadow-indigo-950/50'
+                  : 'bg-gray-950/60 border-gray-800/80 hover:border-gray-700'
               }`}
             >
-              <div>
+              <div className="flex flex-col flex-1 overflow-hidden min-h-0">
                 {/* Day Header */}
-                <div className="flex items-center justify-between pb-2 mb-2 border-b border-gray-800 text-xs">
-                  <span className={`font-bold ${isToday ? 'text-indigo-400' : 'text-gray-400'}`}>
-                    {dayNames[idx]}
-                  </span>
+                <div className="flex items-center justify-between pb-2 mb-2 border-b border-gray-800 text-xs flex-shrink-0">
+                  <div className="flex items-center gap-1.5">
+                    <span className={`font-bold ${isToday ? 'text-indigo-300' : 'text-gray-400'}`}>
+                      {dayNames[idx]}
+                    </span>
+                    {isToday && (
+                      <span className="text-[8px] bg-indigo-500/30 text-indigo-300 font-extrabold px-1.5 py-0.5 rounded uppercase tracking-wider">
+                        Hoje
+                      </span>
+                    )}
+                  </div>
                   <span
                     className={`w-6 h-6 rounded-full flex items-center justify-center font-bold text-[11px] ${
-                      isToday ? 'bg-indigo-600 text-white shadow-md' : 'text-gray-300 bg-gray-900'
+                      isToday ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/40' : 'text-gray-300 bg-gray-900'
                     }`}
                   >
                     {day.getDate()}
                   </span>
                 </div>
 
-                {/* Posts List */}
-                <div className="space-y-2">
+                {/* Posts List with Independent Scrollbar */}
+                <div className="space-y-2 overflow-y-auto pr-1 flex-1 custom-scrollbar">
                   {dayPosts.length === 0 ? (
-                    <div className="text-[10px] text-gray-600 text-center py-6">
-                      Sem posts
+                    <div className="text-[10px] text-gray-600 text-center py-12 flex flex-col items-center justify-center">
+                      <span>Sem posts</span>
                     </div>
                   ) : (
                     dayPosts.map((post) => {
@@ -219,7 +233,7 @@ export function CalendarView({ posts, accounts, selectedAccountId }: CalendarVie
               </div>
 
               {/* Day summary count */}
-              <div className="pt-2 text-[10px] text-gray-500 font-medium text-center border-t border-gray-800/60">
+              <div className="pt-2 mt-2 text-[10px] text-gray-500 font-medium text-center border-t border-gray-800/60 flex-shrink-0">
                 {dayPosts.length} post(s)
               </div>
             </div>
