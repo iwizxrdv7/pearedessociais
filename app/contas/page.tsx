@@ -178,36 +178,75 @@ export default function ContasPage() {
 
           <div className="flex items-center gap-2">
             <span className="text-xs text-gray-400 font-medium">Total de Perfis:</span>
-            <span className="text-xs font-bold text-white bg-gray-800 px-2.5 py-1 rounded-lg border border-gray-700">
-              {accounts.length}
-            </span>
+            {loading ? (
+              <span className="w-8 h-6 bg-gray-800 rounded-lg animate-pulse inline-block border border-gray-700"></span>
+            ) : (
+              <span className="text-xs font-bold text-white bg-gray-800 px-2.5 py-1 rounded-lg border border-gray-700">
+                {accounts.length}
+              </span>
+            )}
           </div>
         </div>
 
         {/* Accounts Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {accounts.map((account) => (
-            <AccountCard
-              key={account.id}
-              account={account}
-              onSync={handleSyncAccount}
-              onDelete={handleDeleteAccount}
-            />
-          ))}
+          {loading ? (
+            // Skeleton Account Cards
+            Array.from({ length: 3 }).map((_, i) => (
+              <div
+                key={i}
+                className="bg-gray-900/60 border border-gray-800 rounded-3xl p-6 shadow-xl space-y-5 animate-pulse min-h-[300px] flex flex-col justify-between"
+              >
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-12 h-12 rounded-2xl bg-gray-800"></div>
+                      <div className="space-y-2">
+                        <div className="w-28 h-3.5 bg-gray-800 rounded"></div>
+                        <div className="w-16 h-2.5 bg-gray-800/60 rounded"></div>
+                      </div>
+                    </div>
+                    <div className="w-14 h-4 bg-emerald-500/10 rounded-full"></div>
+                  </div>
+
+                  <div className="space-y-2 pt-2">
+                    <div className="w-full h-8 bg-gray-950/80 rounded-xl border border-gray-850"></div>
+                    <div className="w-full h-8 bg-gray-950/80 rounded-xl border border-gray-850"></div>
+                  </div>
+                </div>
+
+                <div className="pt-4 border-t border-gray-800/60 flex items-center justify-between">
+                  <div className="w-20 h-3 bg-gray-800/70 rounded"></div>
+                  <div className="w-7 h-7 bg-gray-800 rounded-xl"></div>
+                </div>
+              </div>
+            ))
+          ) : (
+            accounts.map((account) => (
+              <AccountCard
+                key={account.id}
+                account={account}
+                onSync={handleSyncAccount}
+                onDelete={handleDeleteAccount}
+              />
+            ))
+          )}
 
           {/* Add New Card Button */}
-          <div
-            onClick={() => setIsModalOpen(true)}
-            className="border-2 border-dashed border-gray-800 hover:border-indigo-500/60 rounded-3xl p-8 flex flex-col items-center justify-center text-center cursor-pointer transition-all bg-gray-950/40 hover:bg-gray-950/80 group min-h-[300px]"
-          >
-            <div className="w-14 h-14 rounded-2xl bg-indigo-600/10 group-hover:bg-indigo-600/20 border border-indigo-500/20 flex items-center justify-center mb-3 text-indigo-400 transition">
-              <PlusCircle className="w-7 h-7" />
+          {!loading && (
+            <div
+              onClick={() => setIsModalOpen(true)}
+              className="border-2 border-dashed border-gray-800 hover:border-indigo-500/60 rounded-3xl p-8 flex flex-col items-center justify-center text-center cursor-pointer transition-all bg-gray-950/40 hover:bg-gray-950/80 group min-h-[300px]"
+            >
+              <div className="w-14 h-14 rounded-2xl bg-indigo-600/10 group-hover:bg-indigo-600/20 border border-indigo-500/20 flex items-center justify-center mb-3 text-indigo-400 transition">
+                <PlusCircle className="w-7 h-7" />
+              </div>
+              <h3 className="text-sm font-bold text-white mb-1">Adicionar Nova Conta</h3>
+              <p className="text-xs text-gray-400 max-w-xs">
+                Conecte uma nova página ou conta do Instagram para gerenciar e postar automaticamente.
+              </p>
             </div>
-            <h3 className="text-sm font-bold text-white mb-1">Adicionar Nova Conta</h3>
-            <p className="text-xs text-gray-400 max-w-xs">
-              Conecte uma nova página ou conta do Instagram para gerenciar e postar automaticamente.
-            </p>
-          </div>
+          )}
         </div>
       </div>
 

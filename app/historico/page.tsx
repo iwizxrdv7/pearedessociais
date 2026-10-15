@@ -22,6 +22,7 @@ import {
 export default function HistoricoPage() {
   const { selectedAccountId, setSelectedAccountId } = useAccount();
   const [posts, setPosts] = useState<VideoPost[]>([]);
+  const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 20;
 
@@ -34,6 +35,8 @@ export default function HistoricoPage() {
       }
     } catch (err) {
       console.error('Erro ao buscar histórico:', err);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -90,14 +93,45 @@ export default function HistoricoPage() {
             </p>
           </div>
 
-          <div className="text-xs text-gray-400 bg-gray-900 border border-gray-800 px-3.5 py-1.5 rounded-xl font-medium">
-            Total de postagens: <span className="text-indigo-400 font-bold">{filteredPosts.length}</span>
+          <div className="text-xs text-gray-400 bg-gray-900 border border-gray-800 px-3.5 py-1.5 rounded-xl font-medium flex items-center gap-1.5">
+            Total de postagens:{' '}
+            {loading ? (
+              <span className="w-8 h-4 bg-gray-800 rounded animate-pulse inline-block"></span>
+            ) : (
+              <span className="text-indigo-400 font-bold">{filteredPosts.length}</span>
+            )}
           </div>
         </div>
 
         {/* History Container */}
         <div className="bg-gray-900 border border-gray-800 rounded-3xl p-5 md:p-6 shadow-xl space-y-5">
-          {filteredPosts.length === 0 ? (
+          {loading ? (
+            // Skeleton Silhouettes Grid
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-3.5 animate-pulse">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <div
+                  key={i}
+                  className="bg-gray-950/70 border border-gray-800/80 rounded-2xl p-4 flex items-center justify-between gap-3.5"
+                >
+                  <div className="flex items-center gap-3.5 min-w-0 flex-1">
+                    <div className="w-11 h-11 rounded-xl bg-gray-900 border border-gray-800/80 flex-shrink-0"></div>
+                    <div className="min-w-0 flex-1 space-y-2">
+                      <div className="flex items-center gap-2">
+                        <div className="w-48 h-3.5 bg-gray-800 rounded"></div>
+                        <div className="w-16 h-3 bg-gray-800/70 rounded-full"></div>
+                      </div>
+                      <div className="w-3/4 h-2.5 bg-gray-800/60 rounded"></div>
+                      <div className="flex items-center gap-2 pt-1">
+                        <div className="w-20 h-2 bg-indigo-500/20 rounded"></div>
+                        <div className="w-24 h-2 bg-gray-800/50 rounded"></div>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="w-7 h-7 bg-gray-900 rounded-lg"></div>
+                </div>
+              ))}
+            </div>
+          ) : filteredPosts.length === 0 ? (
             <div className="py-16 text-center text-gray-500 text-xs">
               Nenhuma postagem registrada no histórico ainda.
             </div>

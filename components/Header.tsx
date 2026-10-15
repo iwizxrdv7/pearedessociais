@@ -34,6 +34,7 @@ export function Header({ selectedAccountId: propAccountId, onSelectAccount: prop
     selectedAccountId: contextAccountId,
     selectedAccount: contextActiveAccount,
     setSelectedAccountId,
+    loading,
   } = useAccount();
 
   const [isOpen, setIsOpen] = useState(false);
@@ -67,7 +68,15 @@ export function Header({ selectedAccountId: propAccountId, onSelectAccount: prop
           onClick={() => setIsOpen(!isOpen)}
           className="flex items-center gap-3 bg-[#111726] hover:bg-[#161F33] border border-gray-700/80 px-3.5 py-1.5 rounded-xl transition shadow-sm"
         >
-          {activeAccount ? (
+          {loading ? (
+            <div className="flex items-center gap-2.5 animate-pulse">
+              <div className="w-6 h-6 rounded-full bg-gray-800 ring-1 ring-gray-700/60"></div>
+              <div className="space-y-1 text-left">
+                <div className="w-24 h-3 bg-gray-800 rounded"></div>
+                <div className="w-14 h-2 bg-indigo-500/20 rounded"></div>
+              </div>
+            </div>
+          ) : activeAccount ? (
             <div className="flex items-center gap-2.5">
               <div className="relative">
                 <img
