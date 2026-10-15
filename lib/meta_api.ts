@@ -200,9 +200,9 @@ export class MetaAPIClient {
       }
     }
 
-    // 3. Aguardar processamento da Meta com timeout ágil para evitar estourar o limite de função do servidor
+    // 3. Aguardar processamento da Meta (vídeos de até 40MB levam ~15-25s para codificar)
     let isReady = false;
-    const maxInitialChecks = 4; // 4 checagens a cada 2.5s = ~10s
+    const maxInitialChecks = 10; // 10 checagens a cada 2.5s = ~25s
     for (let i = 0; i < maxInitialChecks; i++) {
       await new Promise((r) => setTimeout(r, 2500));
       const statusRes = await fetch(`https://graph.facebook.com/v20.0/${containerId}?fields=status_code,status&access_token=${pageToken}`);

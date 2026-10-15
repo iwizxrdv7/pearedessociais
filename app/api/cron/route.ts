@@ -41,6 +41,14 @@ export async function GET(req: Request) {
                 status: 'failed',
                 error_message: `Erro no processamento da Meta: ${JSON.stringify(check.data)}`,
               }).eq('id', post.id);
+            } else if (!check.statusCode && check.data?.error?.code === 100) {
+              // Se o status_code não existe mais, é porque o container já virou uma mídia publicada no Instagram
+              await supabaseAdmin.from('posts').update({
+                status: 'published',
+                published_at: post.published_at || new Date().toISOString(),
+                error_message: null,
+              }).eq('id', post.id);
+              results.push({ id: post.id, title: post.title, status: 'published_from_verified_media' });
             }
           } catch (e: any) {
             console.warn('Erro ao checar post em processamento:', e);
