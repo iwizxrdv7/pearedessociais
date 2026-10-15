@@ -114,52 +114,70 @@ export default function DashboardPage() {
         {/* Stats Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <div className="bg-[#111726] border border-gray-800 p-5 rounded-2xl shadow-sm flex items-center justify-between">
-            <div>
+            <div className="min-w-0">
               <span className="text-xs text-gray-400 font-medium">Perfis Conectados</span>
-              <div className="text-2xl font-extrabold text-white mt-1">
-                {stats.total_accounts}
+              <div className={`text-2xl font-extrabold text-white mt-1 transition-all duration-300 ${loading ? 'filter blur-[4px] opacity-40 select-none animate-pulse' : ''}`}>
+                {loading ? '—' : stats.total_accounts}
               </div>
               <div className="text-[11px] text-emerald-400 flex items-center gap-1 mt-1">
-                <CheckCircle2 className="w-3 h-3" /> {stats.active_accounts} ativos via API
+                {loading ? (
+                  <span className="w-20 h-2.5 bg-emerald-500/20 rounded animate-pulse inline-block"></span>
+                ) : (
+                  <>
+                    <CheckCircle2 className="w-3 h-3" /> {stats.active_accounts} ativos via API
+                  </>
+                )}
               </div>
             </div>
-            <div className="w-12 h-12 rounded-2xl bg-indigo-600/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400">
+            <div className="w-12 h-12 rounded-2xl bg-indigo-600/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 flex-shrink-0">
               <Users2 className="w-6 h-6" />
             </div>
           </div>
 
           <div className="bg-[#111726] border border-gray-800 p-5 rounded-2xl shadow-sm flex items-center justify-between">
-            <div>
+            <div className="min-w-0">
               <span className="text-xs text-gray-400 font-medium">Reels Agendados</span>
-              <div className="text-2xl font-extrabold text-white mt-1">
-                {stats.scheduled_posts}
+              <div className={`text-2xl font-extrabold text-white mt-1 transition-all duration-300 ${loading ? 'filter blur-[4px] opacity-40 select-none animate-pulse' : ''}`}>
+                {loading ? '—' : stats.scheduled_posts}
               </div>
               <div className="text-[11px] text-indigo-400 flex items-center gap-1 mt-1">
-                <Clock className="w-3 h-3" /> Prontos para disparo
+                {loading ? (
+                  <span className="w-24 h-2.5 bg-indigo-500/20 rounded animate-pulse inline-block"></span>
+                ) : (
+                  <>
+                    <Clock className="w-3 h-3" /> Prontos para disparo
+                  </>
+                )}
               </div>
             </div>
-            <div className="w-12 h-12 rounded-2xl bg-purple-600/10 border border-purple-500/20 flex items-center justify-center text-purple-400">
+            <div className="w-12 h-12 rounded-2xl bg-purple-600/10 border border-purple-500/20 flex items-center justify-center text-purple-400 flex-shrink-0">
               <Calendar className="w-6 h-6" />
             </div>
           </div>
 
           <div className="bg-gray-900 border border-gray-800 p-5 rounded-2xl shadow-lg flex items-center justify-between">
-            <div>
+            <div className="min-w-0">
               <span className="text-xs text-gray-400 font-medium">Total Publicados</span>
-              <div className="text-2xl font-extrabold text-white mt-1">
-                {stats.total_published}
+              <div className={`text-2xl font-extrabold text-white mt-1 transition-all duration-300 ${loading ? 'filter blur-[4px] opacity-40 select-none animate-pulse' : ''}`}>
+                {loading ? '—' : stats.total_published}
               </div>
               <div className="text-[11px] text-emerald-400 flex items-center gap-1 mt-1">
-                <TrendingUp className="w-3 h-3" /> 100% via API Meta
+                {loading ? (
+                  <span className="w-20 h-2.5 bg-emerald-500/20 rounded animate-pulse inline-block"></span>
+                ) : (
+                  <>
+                    <TrendingUp className="w-3 h-3" /> 100% via API Meta
+                  </>
+                )}
               </div>
             </div>
-            <div className="w-12 h-12 rounded-2xl bg-emerald-600/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
+            <div className="w-12 h-12 rounded-2xl bg-emerald-600/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 flex-shrink-0">
               <Send className="w-6 h-6" />
             </div>
           </div>
 
           <div className="bg-gray-900 border border-gray-800 p-5 rounded-2xl shadow-lg flex items-center justify-between">
-            <div>
+            <div className="min-w-0">
               <span className="text-xs text-gray-400 font-medium">Meta API Health</span>
               <div className="text-base font-bold text-white mt-1 flex items-center gap-1.5">
                 <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping"></span>
@@ -169,7 +187,7 @@ export default function DashboardPage() {
                 <ShieldCheck className="w-3 h-3 text-emerald-400" /> Token Permanente
               </div>
             </div>
-            <div className="w-12 h-12 rounded-2xl bg-blue-600/10 border border-blue-500/20 flex items-center justify-center text-blue-400">
+            <div className="w-12 h-12 rounded-2xl bg-blue-600/10 border border-blue-500/20 flex items-center justify-center text-blue-400 flex-shrink-0">
               <Zap className="w-6 h-6" />
             </div>
           </div>
@@ -180,6 +198,7 @@ export default function DashboardPage() {
           posts={posts}
           accounts={accounts}
           selectedAccountId={selectedAccountId}
+          loading={loading}
         />
       </div>
     </main>

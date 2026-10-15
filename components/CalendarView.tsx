@@ -20,9 +20,10 @@ interface CalendarViewProps {
   posts: VideoPost[];
   accounts: SocialAccount[];
   selectedAccountId?: string;
+  loading?: boolean;
 }
 
-export function CalendarView({ posts, accounts, selectedAccountId }: CalendarViewProps) {
+export function CalendarView({ posts, accounts, selectedAccountId, loading = false }: CalendarViewProps) {
   const [currentDate, setCurrentDate] = useState(new Date());
 
   // Filtrar posts do perfil se selecionado
@@ -158,7 +159,35 @@ export function CalendarView({ posts, accounts, selectedAccountId }: CalendarVie
 
                 {/* Posts List with Independent Scrollbar */}
                 <div className="space-y-2 overflow-y-auto pr-1 flex-1 custom-scrollbar">
-                  {dayPosts.length === 0 ? (
+                  {loading ? (
+                    // Skeleton Silhouettes
+                    <div className="space-y-2 animate-pulse pt-1">
+                      <div className="bg-gray-900/60 border border-gray-800/60 rounded-xl p-2.5 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <div className="w-12 h-2.5 bg-gray-800 rounded"></div>
+                          <div className="w-14 h-3 bg-gray-800/80 rounded"></div>
+                        </div>
+                        <div className="w-full h-3 bg-gray-800/90 rounded"></div>
+                        <div className="flex items-center justify-between pt-1">
+                          <div className="w-8 h-2 bg-gray-800/60 rounded"></div>
+                          <div className="w-12 h-2 bg-gray-800/60 rounded"></div>
+                        </div>
+                      </div>
+                      {(idx % 2 === 0 || isToday) && (
+                        <div className="bg-gray-900/40 border border-gray-800/40 rounded-xl p-2.5 space-y-2">
+                          <div className="flex items-center justify-between">
+                            <div className="w-10 h-2.5 bg-gray-800/70 rounded"></div>
+                            <div className="w-12 h-3 bg-gray-800/60 rounded"></div>
+                          </div>
+                          <div className="w-4/5 h-3 bg-gray-800/70 rounded"></div>
+                          <div className="flex items-center justify-between pt-1">
+                            <div className="w-8 h-2 bg-gray-800/50 rounded"></div>
+                            <div className="w-10 h-2 bg-gray-800/50 rounded"></div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ) : dayPosts.length === 0 ? (
                     <div className="text-[10px] text-gray-600 text-center py-12 flex flex-col items-center justify-center">
                       <span>Sem posts</span>
                     </div>
@@ -234,7 +263,11 @@ export function CalendarView({ posts, accounts, selectedAccountId }: CalendarVie
 
               {/* Day summary count */}
               <div className="pt-2 mt-2 text-[10px] text-gray-500 font-medium text-center border-t border-gray-800/60 flex-shrink-0">
-                {dayPosts.length} post(s)
+                {loading ? (
+                  <span className="inline-block w-10 h-2.5 bg-gray-800/60 rounded animate-pulse"></span>
+                ) : (
+                  `${dayPosts.length} post(s)`
+                )}
               </div>
             </div>
           );
