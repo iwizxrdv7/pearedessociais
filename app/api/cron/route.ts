@@ -65,7 +65,42 @@ export async function GET(req: Request) {
       }
     }
 
-    // 3. Buscar posts agendados cujo horário já chegou ou passou
+    // 3. PRÉ-PROCESSAMENTO ANTECIPADO NO INSTAGRAM (estilo SpeedPost)
+    // Se o post está agendado para os próximos 5 minutos e ainda não tem container no Instagram, cria com antecedência!
+    const fiveMinutesAhead = new Date(Date.now() + 5 * 60 * 1000).toISOString();
+    const { data: upcomingPosts } = await supabaseAdmin
+      .from('posts')
+      .select('*')
+      .eq('status', 'scheduled')
+      .lte('scheduled_for', fiveMinutesAhead)
+      .gt('scheduled_for', nowIso);
+
+    if (upcomingPosts && upcomingPosts.length > 0) {
+      for (const post of upcomingPosts as VideoPost[]) {
+        // Se ainda não gerou o container do Instagram antecipado
+        if (!post.meta_media_id && post.video_url) {
+          const account = accounts.find((a) => a.id === post.account_id);
+          if (account?.post_to_instagram && account.instagram_account_id && account.facebook_page_token) {
+            try {
+              const containerId = await MetaAPIClient.createInstagramContainer({
+                igAccountId: account.instagram_account_id,
+                pageToken: account.facebook_page_token,
+                videoUrl: post.video_url,
+                caption: post.caption,
+              });
+              await supabaseAdmin.from('posts').update({
+                meta_media_id: containerId,
+              }).eq('id', post.id);
+              results.push({ id: post.id, title: post.title, status: 'instagram_preloaded_container_created', containerId });
+            } catch (preErr: any) {
+              console.warn('Erro ao pré-carregar container no Instagram:', preErr.message);
+            }
+          }
+        }
+      }
+    }
+
+    // 4. DISPARO DE POSTS NO HORÁRIO (se o horário já chegou ou passou)
     const { data: duePosts, error } = await supabaseAdmin
       .from('posts')
       .select('*')
@@ -89,7 +124,7 @@ export async function GET(req: Request) {
 
         const publishDetails: Record<string, any> = {};
 
-        // Postar no Facebook se ativado
+        // 4.1 Postar no Facebook se ativado
         if (account.post_to_facebook && account.facebook_page_id && account.facebook_page_token) {
           try {
             const fbRes = await MetaAPIClient.publishFacebookReel({
@@ -104,16 +139,31 @@ export async function GET(req: Request) {
           }
         }
 
-        // Postar no Instagram se ativado
+        // 4.2 Postar no Instagram se ativado
         if (account.post_to_instagram && account.instagram_account_id && account.facebook_page_token) {
           try {
-            const igRes = await MetaAPIClient.publishInstagramReel({
-              igAccountId: account.instagram_account_id,
-              pageToken: account.facebook_page_token,
-              videoFilePath: post.video_url,
-              caption: post.caption,
-            });
-            publishDetails.instagram = igRes;
+            // Se já tínhamos o container pré-carregado antecipadamente
+            if (post.meta_media_id) {
+              const check = await MetaAPIClient.checkInstagramContainerStatus(post.meta_media_id, account.facebook_page_token);
+              if (check.statusCode === 'FINISHED') {
+                const pub = await MetaAPIClient.publishInstagramContainer(account.instagram_account_id, post.meta_media_id, account.facebook_page_token);
+                publishDetails.instagram = { mediaId: pub.mediaId, containerId: post.meta_media_id, status: 'published' };
+              } else if (check.statusCode === 'PUBLISHED') {
+                publishDetails.instagram = { containerId: post.meta_media_id, status: 'published' };
+              } else {
+                // Se a Meta ainda está codificando os últimos segundos
+                publishDetails.instagram = { containerId: post.meta_media_id, status: 'processing' };
+              }
+            } else {
+              // Disparo normal caso não tenha havido pré-carregamento
+              const igRes = await MetaAPIClient.publishInstagramReel({
+                igAccountId: account.instagram_account_id,
+                pageToken: account.facebook_page_token,
+                videoFilePath: post.video_url,
+                caption: post.caption,
+              });
+              publishDetails.instagram = igRes;
+            }
           } catch (e: any) {
             publishDetails.instagram_error = e.message;
           }
@@ -137,7 +187,7 @@ export async function GET(req: Request) {
               status: 'published',
               published_at: new Date().toISOString(),
               meta_video_id: publishDetails.facebook?.videoId,
-              meta_media_id: publishDetails.instagram?.mediaId,
+              meta_media_id: publishDetails.instagram?.mediaId || post.meta_media_id,
               error_message: null,
             }).eq('id', post.id);
             results.push({ id: post.id, title: post.title, status: 'published' });

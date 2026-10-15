@@ -252,6 +252,28 @@ export class MetaAPIClient {
   }
 
   /**
+   * Cria apenas o container no Instagram com antecedência para a Meta pré-processar o vídeo
+   */
+  static async createInstagramContainer(params: { igAccountId: string; pageToken: string; videoUrl: string; caption?: string }): Promise<string> {
+    const { igAccountId, pageToken, videoUrl, caption } = params;
+    const containerRes = await fetch(`https://graph.facebook.com/v20.0/${igAccountId}/media`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        media_type: 'REELS',
+        video_url: videoUrl,
+        caption: caption || '',
+        access_token: pageToken,
+      }),
+    });
+    const containerData = await containerRes.json();
+    if (!containerData.id) {
+      throw new Error(`Erro ao pré-criar container no Instagram: ${JSON.stringify(containerData)}`);
+    }
+    return containerData.id;
+  }
+
+  /**
    * Checa o status de processamento de um container de Reel no Instagram
    */
   static async checkInstagramContainerStatus(containerId: string, pageToken: string): Promise<{ statusCode: string; status: string; data: any }> {
