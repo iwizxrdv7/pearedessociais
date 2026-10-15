@@ -209,11 +209,6 @@ export default function ContasPage() {
                     <div className="w-full h-8 bg-gray-950/60 rounded-xl"></div>
                   </div>
                 </div>
-
-                <div className="pt-4 border-t border-gray-800/60 flex items-center justify-between">
-                  <div className="w-20 h-3 bg-gray-800/70 rounded"></div>
-                  <div className="w-7 h-7 bg-gray-800/60 rounded-xl"></div>
-                </div>
               </div>
             ))
           ) : (

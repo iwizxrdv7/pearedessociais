@@ -57,11 +57,6 @@ export function AccountCard({ account, onSync, onDelete, isSyncing = false, isJu
             </div>
           </div>
         </div>
-
-        <div className="pt-4 border-t border-gray-800/60 flex items-center justify-between">
-          <div className="w-24 h-3 bg-gray-800/60 rounded"></div>
-          <div className="w-16 h-3 bg-gray-800/50 rounded"></div>
-        </div>
       </div>
     );
   }
@@ -179,22 +174,13 @@ export function AccountCard({ account, onSync, onDelete, isSyncing = false, isJu
         </div>
       </div>
 
-      {/* Footer Info */}
-      <div className="mt-5 pt-3 border-t border-gray-800 space-y-2">
-        {isJustSynced && (
-          <div className="flex items-center gap-1.5 text-[11px] font-semibold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-1 rounded-lg animate-in fade-in slide-in-from-bottom-1 duration-200">
-            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0" />
-            <span>Perfil sincronizado</span>
-          </div>
-        )}
-
-        <div className="flex items-center justify-between text-[11px] text-gray-400">
-          <span className="flex items-center gap-1 text-emerald-400 font-medium">
-            <ShieldCheck className="w-3.5 h-3.5" /> Token Permanente
-          </span>
-          <span>Meta API v20.0</span>
+      {/* Sync Status Feedback (only shown after sync) */}
+      {isJustSynced && (
+        <div className="mt-4 pt-3 border-t border-gray-800/80 flex items-center gap-1.5 text-[11px] font-semibold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-1.5 rounded-xl animate-in fade-in slide-in-from-bottom-1 duration-200">
+          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0" />
+          <span>Perfil sincronizado</span>
         </div>
-      </div>
+      )}
     </div>
   );
 }
