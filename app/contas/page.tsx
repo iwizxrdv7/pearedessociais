@@ -80,6 +80,7 @@ export default function ContasPage() {
 
   const handleSyncAccount = async (id: string) => {
     setSyncingId(id);
+    setFeedbackMsg(null);
     try {
       const res = await fetch('/api/sync', {
         method: 'POST',
@@ -87,11 +88,20 @@ export default function ContasPage() {
         body: JSON.stringify({ accountId: id }),
       });
       const data = await res.json();
-      if (data.success) {
-        reloadAccounts();
+      if (!res.ok || data.error) {
+        throw new Error(data.error || 'Erro ao sincronizar com a Meta API.');
       }
-    } catch (err) {
+      await reloadAccounts();
+      setFeedbackMsg({
+        type: 'success',
+        text: 'Perfil sincronizado com a Meta API com sucesso!',
+      });
+    } catch (err: any) {
       console.error('Erro ao sincronizar:', err);
+      setFeedbackMsg({
+        type: 'error',
+        text: err.message || 'Falha ao sincronizar perfil.',
+      });
     } finally {
       setSyncingId(null);
     }
@@ -228,6 +238,7 @@ export default function ContasPage() {
                 account={account}
                 onSync={handleSyncAccount}
                 onDelete={handleDeleteAccount}
+                isSyncing={syncingId === account.id}
               />
             ))
           )}

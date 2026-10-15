@@ -18,10 +18,52 @@ interface AccountCardProps {
   account: SocialAccount;
   onSync: (id: string) => void;
   onDelete: (id: string) => void;
+  isSyncing?: boolean;
 }
 
-export function AccountCard({ account, onSync, onDelete }: AccountCardProps) {
+export function AccountCard({ account, onSync, onDelete, isSyncing = false }: AccountCardProps) {
   const isInstagramLinked = !!account.instagram_account_id;
+
+  if (isSyncing) {
+    return (
+      <div className="bg-gray-900/60 border border-gray-800/80 rounded-2xl p-6 shadow-xl space-y-5 animate-pulse min-h-[300px] flex flex-col justify-between">
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-2xl bg-gray-800/70"></div>
+              <div className="space-y-2">
+                <div className="w-28 h-3.5 bg-gray-800/80 rounded"></div>
+                <div className="w-16 h-2.5 bg-gray-800/50 rounded"></div>
+              </div>
+            </div>
+            <div className="flex items-center gap-1">
+              <div className="w-7 h-7 bg-gray-800/50 rounded-lg"></div>
+              <div className="w-7 h-7 bg-gray-800/50 rounded-lg"></div>
+            </div>
+          </div>
+
+          <div className="space-y-2.5 my-4 bg-gray-950/60 p-3.5 rounded-xl">
+            <div className="w-full h-4 bg-gray-800/40 rounded"></div>
+            <div className="w-full h-4 bg-gray-800/40 rounded"></div>
+          </div>
+
+          <div className="space-y-2 pt-1">
+            <div className="w-32 h-3 bg-gray-800/60 rounded"></div>
+            <div className="flex gap-1.5">
+              <div className="w-12 h-6 bg-gray-800/50 rounded-md"></div>
+              <div className="w-12 h-6 bg-gray-800/50 rounded-md"></div>
+              <div className="w-12 h-6 bg-gray-800/50 rounded-md"></div>
+            </div>
+          </div>
+        </div>
+
+        <div className="pt-4 border-t border-gray-800/60 flex items-center justify-between">
+          <div className="w-24 h-3 bg-gray-800/60 rounded"></div>
+          <div className="w-16 h-3 bg-gray-800/50 rounded"></div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-gray-900 border border-gray-800 hover:border-gray-700 rounded-2xl p-6 transition-all duration-200 shadow-lg flex flex-col justify-between">
