@@ -54,7 +54,7 @@ export default function HistoricoPage() {
 
   return (
     <main className="min-h-screen bg-[#0B0F19] pb-16">
-      <Header selectedAccountId={selectedAccountId} onSelectAccount={setSelectedAccountId} />
+      <Header selectedAccountId={selectedAccountId} onSelectAccount={setSelectedAccountId} showUploadButton={false} />
 
       <div className="p-8 max-w-7xl mx-auto space-y-8">
         {/* Top Header */}
@@ -71,14 +71,14 @@ export default function HistoricoPage() {
           </div>
         </div>
 
-        {/* History Table / List */}
+        {/* History Table / List with internal scrolling */}
         <div className="bg-gray-900 border border-gray-800 rounded-3xl p-6 shadow-xl space-y-4">
           {filteredPosts.length === 0 ? (
             <div className="py-12 text-center text-gray-500 text-xs">
               Nenhuma postagem registrada no histórico ainda.
             </div>
           ) : (
-            <div className="space-y-3">
+            <div className="space-y-3 max-h-[620px] overflow-y-auto pr-2 custom-scrollbar">
               {filteredPosts.map((post) => (
                 <div
                   key={post.id}

@@ -17,9 +17,10 @@ import {
 interface HeaderProps {
   selectedAccountId?: string;
   onSelectAccount?: (id: string) => void;
+  showUploadButton?: boolean;
 }
 
-export function Header({ selectedAccountId: propAccountId, onSelectAccount: propOnSelect }: HeaderProps = {}) {
+export function Header({ selectedAccountId: propAccountId, onSelectAccount: propOnSelect, showUploadButton = true }: HeaderProps = {}) {
   const pathname = usePathname();
   const router = useRouter();
 
@@ -156,13 +157,15 @@ export function Header({ selectedAccountId: propAccountId, onSelectAccount: prop
 
       {/* Ações Rápidas */}
       <div className="flex items-center gap-3">
-        <Link
-          href="/fila"
-          className="flex items-center gap-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-medium text-xs px-3.5 py-2 rounded-xl shadow-md shadow-indigo-600/25 transition-all"
-        >
-          <Sparkles className="w-3.5 h-3.5" />
-          + Subir Vídeos & Agendar
-        </Link>
+        {showUploadButton && (
+          <Link
+            href="/fila"
+            className="flex items-center gap-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-medium text-xs px-3.5 py-2 rounded-xl shadow-md shadow-indigo-600/25 transition-all"
+          >
+            <Sparkles className="w-3.5 h-3.5" />
+            + Subir Vídeos & Agendar
+          </Link>
+        )}
 
         {/* Botão de Sair Rápido */}
         <button

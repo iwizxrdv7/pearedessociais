@@ -310,7 +310,7 @@ function EngineStatusBadge({ isExpanded }: { isExpanded: boolean }) {
             status === 'online' ? 'bg-emerald-500 animate-pulse' : 'bg-amber-400 animate-pulse'
           }`}
         />
-        <span className="text-[10px] font-semibold text-gray-300">Motor Nuvem</span>
+        <span className="text-[10px] font-semibold text-gray-300">Status</span>
       </div>
       <span
         className={`text-[9px] px-1.5 py-0.5 rounded font-mono font-bold ${
