@@ -3,7 +3,6 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Header } from '@/components/Header';
-import { VideoUploadZone } from '@/components/VideoUploadZone';
 import { CalendarView } from '@/components/CalendarView';
 import { SocialAccount, VideoPost, DashboardStats } from '@/lib/types';
 import { useAccount } from '@/context/AccountContext';
@@ -70,10 +69,6 @@ export default function DashboardPage() {
     }
   };
 
-  const fetchData = async () => {
-    await Promise.all([fetchPosts(), reloadAccounts()]);
-  };
-
   useEffect(() => {
     fetchPosts();
   }, []);
@@ -87,53 +82,11 @@ export default function DashboardPage() {
     failed_posts: posts.filter((p) => p.status === 'failed').length,
   };
 
-  const activeAccount = selectedAccount || accounts[0];
-
   return (
     <main className="min-h-screen bg-[#0B0F19] pb-16">
       <Header selectedAccountId={selectedAccountId} onSelectAccount={setSelectedAccountId} />
 
-      <div className="p-8 max-w-7xl mx-auto space-y-8">
-        {/* Hero Welcome Banner */}
-        <div
-          className="border border-gray-800 rounded-3xl p-7 relative overflow-hidden shadow-lg"
-          style={{
-            background: 'radial-gradient(circle at 95% 10%, rgba(99, 102, 241, 0.15) 0%, #111726 70%)',
-          }}
-        >
-          <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
-            <div>
-              <div className="inline-flex items-center gap-2 bg-indigo-500/15 border border-indigo-500/30 px-3 py-1 rounded-full text-indigo-400 text-xs font-semibold mb-3">
-                <Sparkles className="w-3.5 h-3.5" />
-                Painel P&A Redes Sociais — Ativo
-              </div>
-              <h1 className="text-3xl font-extrabold text-white tracking-tight">
-                Postador & Agendador Inteligente
-              </h1>
-              <p className="text-sm text-gray-300 mt-2 max-w-xl leading-relaxed">
-                Gerencie múltiplos perfis, publique Reels em massa diretamente pela Meta Graph API sem navegador e sem bloqueios.
-              </p>
-            </div>
-
-            <div className="flex items-center gap-3">
-              <Link
-                href="/contas"
-                className="py-3 px-5 bg-[#0B0F19] hover:bg-gray-800 text-white font-semibold text-xs rounded-2xl border border-gray-700 transition flex items-center gap-2 shadow-sm"
-              >
-                <Users2 className="w-4 h-4 text-indigo-400" />
-                Gerenciar Perfis ({accounts.length})
-              </Link>
-              <Link
-                href="/fila"
-                className="py-3 px-5 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-bold text-xs rounded-2xl shadow-md shadow-indigo-600/30 transition flex items-center gap-2"
-              >
-                <Send className="w-4 h-4" />
-                Subir Vídeos
-              </Link>
-            </div>
-          </div>
-        </div>
-
+      <div className="p-4 md:p-6 lg:p-8 max-w-[98%] w-full mx-auto space-y-6">
         {/* Onboarding Banner when no accounts */}
         {accounts.length === 0 && !loading && (
           <div className="bg-[#111726] border border-indigo-500/30 rounded-3xl p-6 shadow-xl flex flex-col md:flex-row items-center justify-between gap-4 animate-in fade-in">
@@ -159,7 +112,7 @@ export default function DashboardPage() {
         )}
 
         {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <div className="bg-[#111726] border border-gray-800 p-5 rounded-2xl shadow-sm flex items-center justify-between">
             <div>
               <span className="text-xs text-gray-400 font-medium">Perfis Conectados</span>
@@ -190,7 +143,7 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          <div className="bg-gray-900 border border-gray-800 p-5 rounded-3xl shadow-lg flex items-center justify-between">
+          <div className="bg-gray-900 border border-gray-800 p-5 rounded-2xl shadow-lg flex items-center justify-between">
             <div>
               <span className="text-xs text-gray-400 font-medium">Total Publicados</span>
               <div className="text-2xl font-extrabold text-white mt-1">
@@ -205,7 +158,7 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          <div className="bg-gray-900 border border-gray-800 p-5 rounded-3xl shadow-lg flex items-center justify-between">
+          <div className="bg-gray-900 border border-gray-800 p-5 rounded-2xl shadow-lg flex items-center justify-between">
             <div>
               <span className="text-xs text-gray-400 font-medium">Meta API Health</span>
               <div className="text-base font-bold text-white mt-1 flex items-center gap-1.5">
@@ -222,14 +175,7 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Upload and Schedule Section */}
-        <VideoUploadZone
-          accounts={accounts}
-          selectedAccountId={selectedAccountId}
-          onPostCreated={fetchData}
-        />
-
-        {/* Calendar Schedule Grid */}
+        {/* Calendar Schedule Grid - Full width */}
         <CalendarView
           posts={posts}
           accounts={accounts}
