@@ -22,6 +22,7 @@ export default function ContasPage() {
   const { accounts, reloadAccounts, loading } = useAccount();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [syncingId, setSyncingId] = useState<string | null>(null);
+  const [syncedAccountId, setSyncedAccountId] = useState<string | null>(null);
   const [importing, setImporting] = useState(false);
   const [feedbackMsg, setFeedbackMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
@@ -80,6 +81,7 @@ export default function ContasPage() {
 
   const handleSyncAccount = async (id: string) => {
     setSyncingId(id);
+    setSyncedAccountId(null);
     setFeedbackMsg(null);
     try {
       const res = await fetch('/api/sync', {
@@ -92,10 +94,10 @@ export default function ContasPage() {
         throw new Error(data.error || 'Erro ao sincronizar com a Meta API.');
       }
       await reloadAccounts();
-      setFeedbackMsg({
-        type: 'success',
-        text: 'Perfil sincronizado',
-      });
+      setSyncedAccountId(id);
+      setTimeout(() => {
+        setSyncedAccountId((current) => (current === id ? null : current));
+      }, 4000);
     } catch (err: any) {
       console.error('Erro ao sincronizar:', err);
       setFeedbackMsg({
@@ -181,32 +183,6 @@ export default function ContasPage() {
           </div>
         </div>
 
-        {/* Feedback Message (Abaixo da linha de Tokens Permanentes) */}
-        {feedbackMsg && (
-          <div
-            className={`p-3.5 px-4 rounded-2xl border text-xs flex items-center justify-between gap-3 animate-in fade-in slide-in-from-top-1 ${
-              feedbackMsg.type === 'success'
-                ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300'
-                : 'bg-rose-500/10 border-rose-500/30 text-rose-300'
-            }`}
-          >
-            <div className="flex items-center gap-2.5">
-              {feedbackMsg.type === 'success' ? (
-                <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0" />
-              ) : (
-                <AlertCircle className="w-4 h-4 text-rose-400 flex-shrink-0" />
-              )}
-              <span className="font-medium">{feedbackMsg.text}</span>
-            </div>
-            <button
-              onClick={() => setFeedbackMsg(null)}
-              className="text-gray-400 hover:text-white text-xs px-2 py-0.5 rounded-lg hover:bg-gray-800 transition"
-            >
-              ✕
-            </button>
-          </div>
-        )}
-
         {/* Accounts Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {loading ? (
@@ -248,6 +224,7 @@ export default function ContasPage() {
                 onSync={handleSyncAccount}
                 onDelete={handleDeleteAccount}
                 isSyncing={syncingId === account.id}
+                isJustSynced={syncedAccountId === account.id}
               />
             ))
           )}

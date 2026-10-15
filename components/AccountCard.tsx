@@ -19,9 +19,10 @@ interface AccountCardProps {
   onSync: (id: string) => void;
   onDelete: (id: string) => void;
   isSyncing?: boolean;
+  isJustSynced?: boolean;
 }
 
-export function AccountCard({ account, onSync, onDelete, isSyncing = false }: AccountCardProps) {
+export function AccountCard({ account, onSync, onDelete, isSyncing = false, isJustSynced = false }: AccountCardProps) {
   const isInstagramLinked = !!account.instagram_account_id;
 
   if (isSyncing) {
@@ -179,11 +180,20 @@ export function AccountCard({ account, onSync, onDelete, isSyncing = false }: Ac
       </div>
 
       {/* Footer Info */}
-      <div className="mt-5 pt-4 border-t border-gray-800 flex items-center justify-between text-[11px] text-gray-400">
-        <span className="flex items-center gap-1 text-emerald-400 font-medium">
-          <ShieldCheck className="w-3.5 h-3.5" /> Token Permanente
-        </span>
-        <span>Meta API v20.0</span>
+      <div className="mt-5 pt-3 border-t border-gray-800 space-y-2">
+        {isJustSynced && (
+          <div className="flex items-center gap-1.5 text-[11px] font-semibold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-1 rounded-lg animate-in fade-in slide-in-from-bottom-1 duration-200">
+            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0" />
+            <span>Perfil sincronizado</span>
+          </div>
+        )}
+
+        <div className="flex items-center justify-between text-[11px] text-gray-400">
+          <span className="flex items-center gap-1 text-emerald-400 font-medium">
+            <ShieldCheck className="w-3.5 h-3.5" /> Token Permanente
+          </span>
+          <span>Meta API v20.0</span>
+        </div>
       </div>
     </div>
   );
