@@ -38,6 +38,13 @@ export async function POST(req: Request) {
           post.error_message = undefined;
           await savePostAsync(post);
           return NextResponse.json({ success: true, status: 'published', post, message: 'Reel publicado no Instagram com sucesso!' });
+        } else if (check.statusCode === 'PUBLISHED') {
+          // Já foi publicado na Meta
+          post.status = 'published';
+          post.published_at = post.published_at || new Date().toISOString();
+          post.error_message = undefined;
+          await savePostAsync(post);
+          return NextResponse.json({ success: true, status: 'published', post, message: 'Reel já publicado no Instagram com sucesso!' });
         } else if (check.statusCode === 'ERROR' || check.statusCode === 'EXPIRED') {
           post.status = 'failed';
           post.error_message = `Erro na codificação do vídeo no Instagram: ${JSON.stringify(check.data)}`;

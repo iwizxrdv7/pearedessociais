@@ -36,6 +36,14 @@ export async function GET(req: Request) {
                 error_message: null,
               }).eq('id', post.id);
               results.push({ id: post.id, title: post.title, status: 'published_from_processing' });
+            } else if (check.statusCode === 'PUBLISHED') {
+              // Já foi publicado pela Meta!
+              await supabaseAdmin.from('posts').update({
+                status: 'published',
+                published_at: post.published_at || new Date().toISOString(),
+                error_message: null,
+              }).eq('id', post.id);
+              results.push({ id: post.id, title: post.title, status: 'published_from_container_published' });
             } else if (check.statusCode === 'ERROR' || check.statusCode === 'EXPIRED') {
               await supabaseAdmin.from('posts').update({
                 status: 'failed',
